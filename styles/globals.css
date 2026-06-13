@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  @apply bg-dark-bg text-white;
+}
+
+@layer components {
+  .btn-gradient {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold rounded-full bg-gradient-brand text-white shadow-lg shadow-accent-purple/20 hover:shadow-xl hover:shadow-accent-pink/25 hover:scale-[1.02] transition-all duration-300;
+  }
+
+  .text-gradient-brand {
+    @apply bg-gradient-brand bg-clip-text text-transparent;
+  }
+
+  .glass-panel {
+    @apply rounded-2xl border border-white/10 bg-dark-surface/60 backdrop-blur-md;
+  }
+}
+
+* {
+  @apply selection:bg-accent-purple/40 selection:text-white;
+}

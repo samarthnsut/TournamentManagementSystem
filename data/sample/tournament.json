@@ -1,0 +1,73 @@
+{
+  "id": "sample-1",
+  "name": "Sample State Championships 2026",
+  "location": "Mumbai, India",
+  "startDate": "2026-09-10",
+  "endDate": "2026-09-14",
+  "description": "A sample multi-sport state-level championship with athletics, basketball, and combat sports.",
+  "categories": [
+    "Athletics",
+    "Basketball",
+    "Wrestling",
+    "Swimming"
+  ],
+  "stats": {
+    "athletes": 254,
+    "events": 18,
+    "matches": 74
+  },
+  "fixtures": [
+    {
+      "id": "fixture-1",
+      "sport": "Basketball",
+      "matchup": "North Zone vs South Zone",
+      "date": "2026-09-11",
+      "time": "10:00 AM",
+      "venue": "Main Arena"
+    },
+    {
+      "id": "fixture-2",
+      "sport": "Athletics",
+      "matchup": "100m Heats",
+      "date": "2026-09-12",
+      "time": "09:00 AM",
+      "venue": "Track Stadium"
+    },
+    {
+      "id": "fixture-3",
+      "sport": "Wrestling",
+      "matchup": "Featherweight Bracket",
+      "date": "2026-09-13",
+      "time": "01:30 PM",
+      "venue": "Combat Hall"
+    },
+    {
+      "id": "fixture-4",
+      "sport": "Swimming",
+      "matchup": "4x100m Relay Final",
+      "date": "2026-09-14",
+      "time": "04:00 PM",
+      "venue": "Aquatics Center"
+    }
+  ],
+  "leaderboard": [
+    {
+      "position": 1,
+      "athlete": "Aanya Rao",
+      "sport": "Athletics",
+      "score": "Gold - 100m"
+    },
+    {
+      "position": 2,
+      "athlete": "Rahul Singh",
+      "sport": "Wrestling",
+      "score": "Gold - 65kg"
+    },
+    {
+      "position": 3,
+      "athlete": "Neha Patel",
+      "sport": "Swimming",
+      "score": "Silver - 200m"
+    }
+  ]
+}
