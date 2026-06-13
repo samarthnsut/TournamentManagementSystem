@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "rm -rf .next"
+    "clean": "rm -rf .next",
+    "export": "npm run build",
+    "deploy": "npm run export && gh-pages -d out"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
@@ -22,6 +24,7 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0",
+    "gh-pages": "^6.0.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0"
