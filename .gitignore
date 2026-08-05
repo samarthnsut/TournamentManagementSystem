@@ -1,7 +1,13 @@
 node_modules
 .next
 dist
+out
+.DS_Store
 .env.local
 .env.*.local
 /.vscode
 /.idea
+backend/.idea
+backend/build
+backend/.gradle
+backend/gradle.properties
