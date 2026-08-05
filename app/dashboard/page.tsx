@@ -2,57 +2,12 @@
 
 import Link from 'next/link'
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Header from '../../components/Header'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
-
-const allTournaments = [
-  {
-    id: '1',
-    name: 'State Championships 2026',
-    location: 'Mumbai, India',
-    status: 'ongoing',
-    startDate: '2026-09-10',
-    endDate: '2026-09-14',
-    athletes: 254,
-    events: 18,
-    slug: 'sample-tournament'
-  },
-  {
-    id: '2',
-    name: 'Inter-University Games',
-    location: 'Delhi, India',
-    status: 'upcoming',
-    startDate: '2026-10-05',
-    endDate: '2026-10-12',
-    athletes: 512,
-    events: 24,
-    slug: 'inter-university-games'
-  },
-  {
-    id: '3',
-    name: 'District Qualifiers',
-    location: 'Bangalore, India',
-    status: 'completed',
-    startDate: '2026-08-15',
-    endDate: '2026-08-22',
-    athletes: 180,
-    events: 12,
-    slug: 'district-qualifiers'
-  },
-  {
-    id: '4',
-    name: 'National Finals',
-    location: 'Hyderabad, India',
-    status: 'upcoming',
-    startDate: '2026-11-20',
-    endDate: '2026-11-27',
-    athletes: 420,
-    events: 32,
-    slug: 'national-finals'
-  }
-]
+import { getTournaments } from '../../lib/api/tournaments'
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -90,21 +45,30 @@ function getStatusColor(status: string) {
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const {
+    data: tournaments = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['tournaments'],
+    queryFn: getTournaments,
+  })
 
   const filteredTournaments = useMemo(() => {
-    return allTournaments.filter((tournament) => {
+    return tournaments.filter((tournament) => {
       const matchesSearch = tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tournament.location.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesStatus = filterStatus === 'all' || tournament.status === filterStatus
       return matchesSearch && matchesStatus
     })
-  }, [searchQuery, filterStatus])
+  }, [tournaments, searchQuery, filterStatus])
 
   const stats = {
-    total: allTournaments.length,
-    ongoing: allTournaments.filter(t => t.status === 'ongoing').length,
-    upcoming: allTournaments.filter(t => t.status === 'upcoming').length,
-    completed: allTournaments.filter(t => t.status === 'completed').length
+    total: tournaments.length,
+    ongoing: tournaments.filter(t => t.status === 'ongoing').length,
+    upcoming: tournaments.filter(t => t.status === 'upcoming').length,
+    completed: tournaments.filter(t => t.status === 'completed').length
   }
 
   return (
@@ -178,7 +142,16 @@ export default function DashboardPage() {
           </div>
 
           {/* Tournament Grid */}
-          {filteredTournaments.length > 0 ? (
+          {isLoading ? (
+            <div className="rounded-2xl border border-dark-border bg-dark-surface p-12 text-center">
+              <p className="text-gray-400">Loading tournaments from backend...</p>
+            </div>
+          ) : isError ? (
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-12 text-center">
+              <p className="text-red-300 mb-2">Backend connection failed.</p>
+              <p className="text-sm text-gray-400">{error instanceof Error ? error.message : 'Please check the backend server.'}</p>
+            </div>
+          ) : filteredTournaments.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredTournaments.map((tournament) => {
                 const colors = getStatusColor(tournament.status)

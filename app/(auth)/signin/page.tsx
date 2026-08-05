@@ -1,17 +1,38 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMutation } from '@tanstack/react-query'
 import AuthLayout from '../../../components/auth/AuthLayout'
 import AuthLink from '../../../components/auth/AuthLink'
 import PasswordInput from '../../../components/auth/PasswordInput'
 import Input from '../../../components/ui/Input'
 import Button from '../../../components/ui/Button'
+import { login, storeAuth } from '../../../lib/api/auth'
 
 export default function SignInPage() {
+  const router = useRouter()
   const [remember, setRemember] = useState(false)
+  const [error, setError] = useState('')
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: (auth) => {
+      storeAuth(auth)
+      router.push('/dashboard')
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : 'Unable to sign in.')
+    },
+  })
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError('')
+    const data = new FormData(event.currentTarget)
+    loginMutation.mutate({
+      email: String(data.get('email') ?? ''),
+      password: String(data.get('password') ?? ''),
+    })
   }
 
   return (
@@ -44,9 +65,10 @@ export default function SignInPage() {
           Remember me
         </label>
 
-        <Button type="submit" className="btn-gradient w-full">
-          Sign in
+        <Button type="submit" className="btn-gradient w-full" disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
         </Button>
+        {error ? <p className="text-center text-sm text-accent-pink">{error}</p> : null}
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-400">

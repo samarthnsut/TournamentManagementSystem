@@ -2,12 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Header from '../../../components/Header'
 import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
 import Card from '../../../components/ui/Card'
+import { createTournament } from '../../../lib/api/tournaments'
 
 export default function CreateTournamentPage() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -19,6 +24,14 @@ export default function CreateTournamentPage() {
   })
 
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const createTournamentMutation = useMutation({
+    mutationFn: createTournament,
+    onSuccess: async () => {
+      setIsSubmitted(true)
+      await queryClient.invalidateQueries({ queryKey: ['tournaments'] })
+      setTimeout(() => router.push('/dashboard'), 700)
+    },
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -29,9 +42,15 @@ export default function CreateTournamentPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted:', formData)
-    setIsSubmitted(true)
-    setTimeout(() => setIsSubmitted(false), 3000)
+    createTournamentMutation.mutate({
+      name: formData.name,
+      location: formData.location,
+      description: formData.description || undefined,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      maxAthletes: formData.maxAthletes ? Number(formData.maxAthletes) : undefined,
+      category: formData.category,
+    })
   }
 
   const categories = [
@@ -208,6 +227,14 @@ export default function CreateTournamentPage() {
                 </div>
 
                 {/* Form Actions */}
+                {createTournamentMutation.isError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
+                    {createTournamentMutation.error instanceof Error
+                      ? createTournamentMutation.error.message
+                      : 'Unable to create tournament. Please check the backend server.'}
+                  </div>
+                ) : null}
+
                 <div className="flex flex-col gap-3 border-t border-dark-border pt-6 sm:flex-row">
                   <Link href="/dashboard" className="flex-1">
                     <Button variant="secondary" className="w-full">
@@ -216,9 +243,10 @@ export default function CreateTournamentPage() {
                   </Link>
                   <button
                     type="submit"
+                    disabled={createTournamentMutation.isPending}
                     className="flex-1 rounded-full bg-gradient-cta px-6 py-3 font-semibold text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
                   >
-                    {isSubmitted ? '✓ Created!' : 'Create Tournament'}
+                    {createTournamentMutation.isPending ? 'Creating...' : isSubmitted ? '✓ Created!' : 'Create Tournament'}
                   </button>
                 </div>
               </form>

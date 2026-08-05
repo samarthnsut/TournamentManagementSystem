@@ -1,11 +1,14 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMutation } from '@tanstack/react-query'
 import AuthLayout from '../../../components/auth/AuthLayout'
 import AuthLink from '../../../components/auth/AuthLink'
 import PasswordInput from '../../../components/auth/PasswordInput'
 import Input from '../../../components/ui/Input'
 import Button from '../../../components/ui/Button'
+import { register, storeAuth } from '../../../lib/api/auth'
 
 const roles = [
   { value: 'athlete', label: 'Athlete' },
@@ -14,8 +17,19 @@ const roles = [
 ]
 
 export default function SignUpPage() {
+  const router = useRouter()
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState('')
+  const registerMutation = useMutation({
+    mutationFn: register,
+    onSuccess: (auth) => {
+      storeAuth(auth)
+      router.push('/dashboard')
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : 'Unable to create account.')
+    },
+  })
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -29,6 +43,13 @@ export default function SignUpPage() {
     }
 
     setError('')
+    registerMutation.mutate({
+      fullName: String(data.get('name') ?? ''),
+      email: String(data.get('email') ?? ''),
+      password,
+      organizationName: String(data.get('organization') ?? ''),
+      organizationType: String(data.get('role') ?? '') === 'federation' ? 'FEDERATION' : 'PRIVATE_ORGANIZER',
+    })
   }
 
   return (
@@ -106,8 +127,8 @@ export default function SignUpPage() {
           </span>
         </label>
 
-        <Button type="submit" className="btn-gradient w-full" disabled={!acceptedTerms}>
-          Create account
+        <Button type="submit" className="btn-gradient w-full" disabled={!acceptedTerms || registerMutation.isPending}>
+          {registerMutation.isPending ? 'Creating account...' : 'Create account'}
         </Button>
         {error ? <p className="text-center text-sm text-accent-pink">{error}</p> : null}
       </form>
