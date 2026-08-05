@@ -1,6 +1,7 @@
 package com.acme.tms.identity.dto;
 
 import com.acme.tms.organization.domain.OrganizationUnitType;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

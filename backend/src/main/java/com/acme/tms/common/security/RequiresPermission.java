@@ -1,6 +1,7 @@
-package com.acme.tms.access.annotation;
+package com.acme.tms.common.security;
 
-import com.acme.tms.access.domain.ScopeType;
+
+import com.acme.tms.identity.domain.Permission;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

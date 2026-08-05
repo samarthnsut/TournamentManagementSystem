@@ -1,9 +1,9 @@
-package com.acme.tms.access.service;
+package com.acme.tms.common.security;
 
-import com.acme.tms.access.domain.ScopeType;
-import com.acme.tms.access.repository.UserRoleAssignmentRepository;
 import com.acme.tms.common.exception.ValidationException;
+import com.acme.tms.identity.repository.UserRoleAssignmentRepository;
 import com.acme.tms.organization.repository.OrganizationUnitRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

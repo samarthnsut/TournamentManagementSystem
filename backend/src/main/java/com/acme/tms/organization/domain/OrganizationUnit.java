@@ -1,6 +1,7 @@
 package com.acme.tms.organization.domain;
 
 import com.acme.tms.common.domain.SoftDeletableEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

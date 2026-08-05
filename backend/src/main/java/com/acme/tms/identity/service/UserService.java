@@ -1,6 +1,5 @@
 package com.acme.tms.identity.service;
 
-import com.acme.tms.access.service.RoleAssignmentService;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.util.RandomTokenGenerator;
 import com.acme.tms.common.util.Sha256;
@@ -10,6 +9,7 @@ import com.acme.tms.identity.dto.InviteUserRequest;
 import com.acme.tms.identity.dto.InviteUserResponse;
 import com.acme.tms.identity.repository.UserRepository;
 import com.acme.tms.organization.service.OrganizationUnitService;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

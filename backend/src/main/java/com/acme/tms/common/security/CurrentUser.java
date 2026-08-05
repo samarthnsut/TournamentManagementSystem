@@ -1,7 +1,7 @@
-package com.acme.tms.access.service;
+package com.acme.tms.common.security;
 
 import com.acme.tms.common.exception.AuthenticationException;
-import com.acme.tms.common.security.AuthenticatedUser;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

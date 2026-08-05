@@ -1,11 +1,7 @@
-package com.acme.tms.access.aspect;
+package com.acme.tms.common.security;
 
-import com.acme.tms.access.annotation.RequiresPermission;
-import com.acme.tms.access.domain.ScopeType;
-import com.acme.tms.access.service.CurrentUser;
-import com.acme.tms.access.service.ScopeEvaluator;
-import com.acme.tms.access.service.ScopeTarget;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
+
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;

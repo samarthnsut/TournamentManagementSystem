@@ -1,4 +1,4 @@
-package com.acme.tms.access.domain;
+package com.acme.tms.common.security;
 
 public enum ScopeType {
     GLOBAL,

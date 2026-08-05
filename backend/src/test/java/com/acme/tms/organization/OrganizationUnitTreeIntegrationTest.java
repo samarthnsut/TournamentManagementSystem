@@ -2,13 +2,13 @@ package com.acme.tms.organization;
 
 import com.acme.tms.AbstractIntegrationTest;
 import com.acme.tms.support.ApiClient;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class OrganizationUnitTreeIntegrationTest extends AbstractIntegrationTest {
 

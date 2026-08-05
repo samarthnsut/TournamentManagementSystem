@@ -1,11 +1,11 @@
 package com.acme.tms.organization.service;
 
-import com.acme.tms.access.service.CurrentUser;
-import com.acme.tms.access.service.ScopeEvaluator;
-import com.acme.tms.access.service.ScopeTarget;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
+import com.acme.tms.common.security.CurrentUser;
+import com.acme.tms.common.security.ScopeEvaluator;
+import com.acme.tms.common.security.ScopeTarget;
 import com.acme.tms.common.util.SlugUtil;
 import com.acme.tms.organization.domain.OrganizationUnit;
 import com.acme.tms.organization.domain.OrganizationUnitStatus;
@@ -14,6 +14,7 @@ import com.acme.tms.organization.dto.OrganizationUnitResponse;
 import com.acme.tms.organization.dto.OrganizationUnitTreeResponse;
 import com.acme.tms.organization.dto.UpdateOrganizationUnitRequest;
 import com.acme.tms.organization.repository.OrganizationUnitRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

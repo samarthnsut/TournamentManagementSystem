@@ -1,7 +1,9 @@
-package com.acme.tms.access.repository;
+package com.acme.tms.identity.repository;
 
-import com.acme.tms.access.domain.ScopeType;
-import com.acme.tms.access.domain.UserRoleAssignment;
+import com.acme.tms.common.security.ScopeType;
+import com.acme.tms.identity.domain.Permission;
+import com.acme.tms.identity.domain.UserRoleAssignment;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

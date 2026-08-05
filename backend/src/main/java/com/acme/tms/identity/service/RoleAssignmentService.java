@@ -1,18 +1,22 @@
-package com.acme.tms.access.service;
+package com.acme.tms.identity.service;
 
-import com.acme.tms.access.domain.Role;
-import com.acme.tms.access.domain.ScopeType;
-import com.acme.tms.access.domain.UserRoleAssignment;
-import com.acme.tms.access.dto.CreateRoleAssignmentRequest;
-import com.acme.tms.access.dto.RoleAssignmentResponse;
-import com.acme.tms.access.repository.RoleRepository;
-import com.acme.tms.access.repository.UserRoleAssignmentRepository;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
 import com.acme.tms.common.exception.ValidationException;
+import com.acme.tms.common.security.CurrentUser;
+import com.acme.tms.common.security.ScopeEvaluator;
+import com.acme.tms.common.security.ScopeTarget;
+import com.acme.tms.common.security.ScopeType;
+import com.acme.tms.identity.domain.Role;
+import com.acme.tms.identity.domain.UserRoleAssignment;
+import com.acme.tms.identity.dto.CreateRoleAssignmentRequest;
+import com.acme.tms.identity.dto.RoleAssignmentResponse;
+import com.acme.tms.identity.repository.RoleRepository;
 import com.acme.tms.identity.repository.UserRepository;
+import com.acme.tms.identity.repository.UserRoleAssignmentRepository;
 import com.acme.tms.organization.repository.OrganizationUnitRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

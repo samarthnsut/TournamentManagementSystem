@@ -1,6 +1,8 @@
-package com.acme.tms.access.domain;
+package com.acme.tms.identity.domain;
 
 import com.acme.tms.common.domain.SoftDeletableEntity;
+import com.acme.tms.common.security.ScopeType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

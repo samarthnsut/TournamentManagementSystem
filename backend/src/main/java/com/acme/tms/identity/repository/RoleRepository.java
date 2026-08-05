@@ -1,6 +1,7 @@
-package com.acme.tms.access.repository;
+package com.acme.tms.identity.repository;
 
-import com.acme.tms.access.domain.Role;
+import com.acme.tms.identity.domain.Role;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

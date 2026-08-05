@@ -1,6 +1,5 @@
-package com.acme.tms.access.service;
+package com.acme.tms.common.security;
 
-import com.acme.tms.access.domain.ScopeType;
 
 import java.util.UUID;
 

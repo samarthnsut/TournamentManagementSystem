@@ -1,13 +1,14 @@
 package com.acme.tms.common.config;
 
-import com.acme.tms.access.domain.ScopeType;
-import com.acme.tms.access.service.RoleAssignmentService;
+import com.acme.tms.common.security.ScopeType;
 import com.acme.tms.identity.domain.User;
 import com.acme.tms.identity.domain.UserStatus;
 import com.acme.tms.identity.repository.UserRepository;
+import com.acme.tms.identity.service.RoleAssignmentService;
 import com.acme.tms.organization.domain.OrganizationUnitType;
 import com.acme.tms.organization.dto.CreateOrganizationUnitRequest;
 import com.acme.tms.organization.service.OrganizationUnitService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;

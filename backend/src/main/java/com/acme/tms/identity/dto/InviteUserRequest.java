@@ -1,6 +1,5 @@
 package com.acme.tms.identity.dto;
 
-import com.acme.tms.access.dto.CreateRoleAssignmentRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

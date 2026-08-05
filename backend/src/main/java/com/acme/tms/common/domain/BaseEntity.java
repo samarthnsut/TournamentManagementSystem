@@ -1,6 +1,7 @@
 package com.acme.tms.common.domain;
 
 import com.acme.tms.common.util.UuidV7Generator;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;

@@ -1,6 +1,7 @@
 package com.acme.tms.identity.domain;
 
 import com.acme.tms.common.domain.BaseEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;

@@ -1,12 +1,13 @@
 package com.acme.tms.organization.api;
 
-import com.acme.tms.access.annotation.RequiresPermission;
-import com.acme.tms.access.domain.ScopeType;
+import com.acme.tms.common.security.RequiresPermission;
+import com.acme.tms.common.security.ScopeType;
 import com.acme.tms.organization.dto.CreateOrganizationUnitRequest;
 import com.acme.tms.organization.dto.OrganizationUnitResponse;
 import com.acme.tms.organization.dto.OrganizationUnitTreeResponse;
 import com.acme.tms.organization.dto.UpdateOrganizationUnitRequest;
 import com.acme.tms.organization.service.OrganizationUnitService;
+
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;

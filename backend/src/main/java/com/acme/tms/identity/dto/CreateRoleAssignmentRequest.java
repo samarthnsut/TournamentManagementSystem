@@ -1,6 +1,7 @@
-package com.acme.tms.access.dto;
+package com.acme.tms.identity.dto;
 
-import com.acme.tms.access.domain.ScopeType;
+import com.acme.tms.common.security.ScopeType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 

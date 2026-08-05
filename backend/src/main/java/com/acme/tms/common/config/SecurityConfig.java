@@ -2,6 +2,7 @@ package com.acme.tms.common.config;
 
 import com.acme.tms.common.security.JwtAuthenticationFilter;
 import com.acme.tms.common.security.JwtProperties;
+
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

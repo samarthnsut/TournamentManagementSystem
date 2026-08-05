@@ -1,8 +1,9 @@
-package com.acme.tms.access.api;
+package com.acme.tms.identity.api;
 
-import com.acme.tms.access.dto.CreateRoleAssignmentRequest;
-import com.acme.tms.access.dto.RoleAssignmentResponse;
-import com.acme.tms.access.service.RoleAssignmentService;
+import com.acme.tms.identity.dto.CreateRoleAssignmentRequest;
+import com.acme.tms.identity.dto.RoleAssignmentResponse;
+import com.acme.tms.identity.service.RoleAssignmentService;
+
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;

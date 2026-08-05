@@ -1,10 +1,11 @@
 package com.acme.tms.identity.api;
 
-import com.acme.tms.access.annotation.RequiresPermission;
-import com.acme.tms.access.domain.ScopeType;
+import com.acme.tms.common.security.RequiresPermission;
+import com.acme.tms.common.security.ScopeType;
 import com.acme.tms.identity.dto.InviteUserRequest;
 import com.acme.tms.identity.dto.InviteUserResponse;
 import com.acme.tms.identity.service.UserService;
+
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;

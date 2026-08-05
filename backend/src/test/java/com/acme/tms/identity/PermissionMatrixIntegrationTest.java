@@ -1,17 +1,17 @@
-package com.acme.tms.access;
+package com.acme.tms.identity;
 
 import com.acme.tms.AbstractIntegrationTest;
 import com.acme.tms.support.ApiClient;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The role x endpoint x scope grid. Each case grants exactly one role at the tenant root and asserts
