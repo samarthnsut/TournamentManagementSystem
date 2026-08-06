@@ -51,7 +51,9 @@ public abstract class AbstractIntegrationTest {
     @BeforeEach
     void resetState() {
         jdbcTemplate.execute("""
-            truncate competition, tournament, sport_configuration, venue,
+            truncate registration_response, registration, registration_form_definition,
+                     team_member, participant,
+                     competition, tournament, sport_configuration, venue,
                      user_role_assignment, refresh_token, app_user, organization_unit cascade
             """);
         api = new ApiClient(mockMvc, objectMapper);
