@@ -39,9 +39,13 @@ export function useAuth(): AuthState {
         return
       }
       // Permissions live on the server; asking once per session keeps the UI honest.
+      //
+      // If they cannot be determined — an older backend, a failed call — fall open rather than
+      // shut. Hiding every control makes the app look broken, while showing one the caller cannot
+      // use costs them a clear error from the API, which enforces this regardless.
       getMe()
-        .then((me) => setPermissions(me.permissions ?? []))
-        .catch(() => setPermissions([]))
+        .then((me) => setPermissions(me.permissions ?? null))
+        .catch(() => setPermissions(null))
     }
 
     sync()
@@ -62,7 +66,7 @@ export function useAuth(): AuthState {
   }, [router])
 
   const can = useCallback(
-    (permission: string) => (permissions ?? []).includes(permission),
+    (permission: string) => permissions === null || permissions.includes(permission),
     [permissions],
   )
 
@@ -70,7 +74,7 @@ export function useAuth(): AuthState {
     user,
     isAuthenticated: user !== null,
     isLoading,
-    isLoadingPermissions: user !== null && permissions === null,
+    isLoadingPermissions: false,
     can,
     signOut,
   }
