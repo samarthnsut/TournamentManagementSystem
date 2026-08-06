@@ -1,5 +1,6 @@
 package com.acme.tms.tournament.domain;
 
+import com.acme.tms.common.domain.RegistrationApprovalPolicy;
 import com.acme.tms.common.domain.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
@@ -36,6 +37,11 @@ public class Tournament extends SoftDeletableEntity {
     private TournamentStatus status = TournamentStatus.DRAFT;
 
     private Instant publishedAt;
+
+    /** Null means inherit the owning organization unit's policy. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registration_approval_policy", length = 30)
+    private RegistrationApprovalPolicy registrationApprovalPolicy;
 
     /** The slug is part of a public URL, so it may only change while nobody could have seen it. */
     public boolean isSlugMutable() {
@@ -96,6 +102,14 @@ public class Tournament extends SoftDeletableEntity {
 
     public void setStatus(TournamentStatus status) {
         this.status = status;
+    }
+
+    public RegistrationApprovalPolicy getRegistrationApprovalPolicy() {
+        return registrationApprovalPolicy;
+    }
+
+    public void setRegistrationApprovalPolicy(RegistrationApprovalPolicy registrationApprovalPolicy) {
+        this.registrationApprovalPolicy = registrationApprovalPolicy;
     }
 
     public Instant getPublishedAt() {

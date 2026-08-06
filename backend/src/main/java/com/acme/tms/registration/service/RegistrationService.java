@@ -28,8 +28,11 @@ import com.acme.tms.registration.repository.RegistrationResponseRepository;
 import com.acme.tms.registration.repository.TeamMemberRepository;
 import com.acme.tms.tournament.domain.Competition;
 import com.acme.tms.tournament.domain.CompetitionStatus;
+import com.acme.tms.common.domain.RegistrationApprovalPolicy;
+import com.acme.tms.tournament.service.ApprovalPolicyService;
 import com.acme.tms.tournament.service.CompetitionService;
 import com.acme.tms.tournament.service.SportConfigurationService;
+import com.acme.tms.tournament.service.TournamentService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -52,6 +55,8 @@ public class RegistrationService {
     private final AnswerValidator answerValidator;
     private final CompetitionService competitionService;
     private final SportConfigurationService sportConfigurationService;
+    private final TournamentService tournamentService;
+    private final ApprovalPolicyService approvalPolicyService;
     private final ScopeEvaluator scopeEvaluator;
     private final CurrentUser currentUser;
     private final ObjectMapper objectMapper;
@@ -65,6 +70,8 @@ public class RegistrationService {
         AnswerValidator answerValidator,
         CompetitionService competitionService,
         SportConfigurationService sportConfigurationService,
+        TournamentService tournamentService,
+        ApprovalPolicyService approvalPolicyService,
         ScopeEvaluator scopeEvaluator,
         CurrentUser currentUser,
         ObjectMapper objectMapper
@@ -77,6 +84,8 @@ public class RegistrationService {
         this.answerValidator = answerValidator;
         this.competitionService = competitionService;
         this.sportConfigurationService = sportConfigurationService;
+        this.tournamentService = tournamentService;
+        this.approvalPolicyService = approvalPolicyService;
         this.scopeEvaluator = scopeEvaluator;
         this.currentUser = currentUser;
         this.objectMapper = objectMapper;
@@ -131,12 +140,23 @@ public class RegistrationService {
 
         answerValidator.validate(request.answers(), formDefinitionService.parse(formDefinition.getSchema()));
 
+        // The tournament decides whether anyone has to look at this. Sprint 5's workflow engine
+        // will take precedence over the policy; until then the policy is the whole decision.
+        RegistrationApprovalPolicy policy =
+            approvalPolicyService.resolve(tournamentService.require(competition.getTournamentId()));
+        Instant now = Instant.now();
+
         Registration registration = new Registration();
         registration.setOrganizationUnitId(competition.getOrganizationUnitId());
         registration.setCompetitionId(competition.getId());
         registration.setParticipantId(participant.getId());
-        registration.setStatus(RegistrationStatus.PENDING);
-        registration.setSubmittedAt(Instant.now());
+        registration.setSubmittedAt(now);
+        if (policy == RegistrationApprovalPolicy.AUTO_APPROVE) {
+            registration.setStatus(RegistrationStatus.APPROVED);
+            registration.setDecidedAt(now);
+        } else {
+            registration.setStatus(RegistrationStatus.PENDING);
+        }
         registration = registrationRepository.save(registration);
 
         RegistrationResponse response = new RegistrationResponse();
@@ -144,7 +164,7 @@ public class RegistrationService {
         // Pinned deliberately: this answer set belongs to this version forever (BR-RR-2).
         response.setFormDefinitionId(formDefinition.getId());
         response.setAnswers(request.answers().toString());
-        response.setSubmittedAt(Instant.now());
+        response.setSubmittedAt(now);
         responseRepository.save(response);
 
         return toResponse(registration, participant, response, formDefinition.getVersion());

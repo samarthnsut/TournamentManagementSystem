@@ -1,5 +1,6 @@
 package com.acme.tms.organization.domain;
 
+import com.acme.tms.common.domain.RegistrationApprovalPolicy;
 import com.acme.tms.common.domain.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
@@ -29,6 +30,12 @@ public class OrganizationUnit extends SoftDeletableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrganizationUnitStatus status = OrganizationUnitStatus.ACTIVE;
+
+    /** The default a tournament inherits when it does not set its own. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registration_approval_policy", nullable = false, length = 30)
+    private RegistrationApprovalPolicy registrationApprovalPolicy =
+        RegistrationApprovalPolicy.DIRECT_SINGLE_APPROVAL;
 
     public UUID getParentOrganizationUnitId() {
         return parentOrganizationUnitId;
@@ -60,6 +67,14 @@ public class OrganizationUnit extends SoftDeletableEntity {
 
     public void setType(OrganizationUnitType type) {
         this.type = type;
+    }
+
+    public RegistrationApprovalPolicy getRegistrationApprovalPolicy() {
+        return registrationApprovalPolicy;
+    }
+
+    public void setRegistrationApprovalPolicy(RegistrationApprovalPolicy registrationApprovalPolicy) {
+        this.registrationApprovalPolicy = registrationApprovalPolicy;
     }
 
     public OrganizationUnitStatus getStatus() {

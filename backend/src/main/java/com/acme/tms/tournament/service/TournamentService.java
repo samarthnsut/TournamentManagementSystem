@@ -2,6 +2,7 @@ package com.acme.tms.tournament.service;
 
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
+import com.acme.tms.common.domain.RegistrationApprovalPolicy;
 import com.acme.tms.common.exception.ValidationException;
 import com.acme.tms.common.security.CurrentUser;
 import com.acme.tms.common.security.ScopeEvaluator;
@@ -29,6 +30,7 @@ public class TournamentService {
     private final TournamentRepository tournamentRepository;
     private final CompetitionRepository competitionRepository;
     private final SlugService slugService;
+    private final ApprovalPolicyService approvalPolicyService;
     private final ScopeEvaluator scopeEvaluator;
     private final CurrentUser currentUser;
 
@@ -36,12 +38,14 @@ public class TournamentService {
         TournamentRepository tournamentRepository,
         CompetitionRepository competitionRepository,
         SlugService slugService,
+        ApprovalPolicyService approvalPolicyService,
         ScopeEvaluator scopeEvaluator,
         CurrentUser currentUser
     ) {
         this.tournamentRepository = tournamentRepository;
         this.competitionRepository = competitionRepository;
         this.slugService = slugService;
+        this.approvalPolicyService = approvalPolicyService;
         this.scopeEvaluator = scopeEvaluator;
         this.currentUser = currentUser;
     }
@@ -106,6 +110,16 @@ public class TournamentService {
                 );
             }
             tournament.setSlug(slugService.resolve(request.slug(), request.name()));
+        }
+
+        if (request.approvalPolicy() != null) {
+            // Changing this never revisits entries that already exist: a pending entry stays
+            // pending until a human decides, whichever way the switch is thrown.
+            tournament.setRegistrationApprovalPolicy(
+                "INHERIT".equalsIgnoreCase(request.approvalPolicy())
+                    ? null
+                    : parseApprovalPolicy(request.approvalPolicy())
+            );
         }
 
         // Dates are frozen once play has begun (BR-T-6).
@@ -193,6 +207,17 @@ public class TournamentService {
             .orElseThrow(() -> new ResourceNotFoundException("TOURNAMENT_NOT_FOUND", "Tournament not found."));
     }
 
+    private RegistrationApprovalPolicy parseApprovalPolicy(String raw) {
+        try {
+            return RegistrationApprovalPolicy.valueOf(raw);
+        } catch (IllegalArgumentException exception) {
+            throw new ValidationException(
+                "INVALID_APPROVAL_POLICY",
+                "approvalPolicy must be AUTO_APPROVE, DIRECT_SINGLE_APPROVAL or INHERIT."
+            );
+        }
+    }
+
     private void validateDates(java.time.LocalDate start, java.time.LocalDate end) {
         if (start != null && end != null && end.isBefore(start)) {
             throw new ValidationException("INVALID_DATE_RANGE", "endDate cannot be before startDate.");
@@ -210,6 +235,8 @@ public class TournamentService {
             tournament.getStartDate(),
             tournament.getEndDate(),
             tournament.getPublishedAt(),
+            tournament.getRegistrationApprovalPolicy(),
+            approvalPolicyService.resolve(tournament),
             tournament.getCreatedAt()
         );
     }

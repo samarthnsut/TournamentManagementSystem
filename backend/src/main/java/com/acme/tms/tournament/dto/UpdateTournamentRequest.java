@@ -11,6 +11,12 @@ public record UpdateTournamentRequest(
     @Size(max = 120) String slug,
     String description,
     LocalDate startDate,
-    LocalDate endDate
+    LocalDate endDate,
+    /**
+     * {@code AUTO_APPROVE}, {@code DIRECT_SINGLE_APPROVAL}, or {@code INHERIT} to clear the
+     * override and follow the organization again. A JSON null cannot express "clear" in a PATCH,
+     * hence the explicit sentinel.
+     */
+    String approvalPolicy
 ) {
 }

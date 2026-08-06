@@ -19,11 +19,26 @@ import {
   getTournament,
   nextAction,
   nextCompetitionAction,
+  setApprovalPolicy,
   transitionCompetition,
+  type ApprovalPolicy,
   transitionTournament,
   type CompetitionAction,
   type TournamentAction,
 } from '../../../lib/api/tournaments'
+
+const APPROVAL_CHOICES: Array<{ value: ApprovalPolicy; label: string; description: string }> = [
+  {
+    value: 'DIRECT_SINGLE_APPROVAL',
+    label: 'Review each entry',
+    description: 'Entries arrive as Pending and an organizer approves or rejects them.',
+  },
+  {
+    value: 'AUTO_APPROVE',
+    label: 'Accept automatically',
+    description: 'Entries are Approved on submission. Nobody has to act.',
+  },
+]
 
 function formatDateRange(startDate: string | null, endDate: string | null) {
   if (!startDate && !endDate) {
@@ -80,6 +95,15 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
     onSuccess: async () => {
       setActionError('')
       await refresh()
+    },
+    onError: reportError,
+  })
+
+  const approvalPolicy = useMutation({
+    mutationFn: (policy: ApprovalPolicy) => setApprovalPolicy(tournamentId, policy),
+    onSuccess: async () => {
+      setActionError('')
+      await queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] })
     },
     onError: reportError,
   })
@@ -246,6 +270,58 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
         </div>
 
         <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8 sm:py-12">
+          {/* Entry approval — applies to every competition in this tournament. */}
+          <Card className="mb-8">
+            <h2 className="text-lg font-semibold text-white">Entry approval</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Applies to every competition in this tournament.
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {APPROVAL_CHOICES.map((choice) => {
+                const isSelected = tournament.effectiveApprovalPolicy === choice.value
+                return (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    disabled={approvalPolicy.isPending}
+                    onClick={() => approvalPolicy.mutate(choice.value)}
+                    aria-pressed={isSelected}
+                    className={`rounded-lg border px-4 py-3 text-left transition disabled:opacity-60 ${
+                      isSelected
+                        ? 'border-accent-purple bg-accent-purple/15'
+                        : 'border-dark-border bg-dark-bg/40 hover:border-gray-600'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-white">{choice.label}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+                      {choice.description}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-accent-blue/35 bg-accent-blue/10 px-4 py-3 text-sm text-blue-200">
+              <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11a.75.75 0 0 0-1.5 0v.5a.75.75 0 0 0 1.5 0V7Zm0 3.25a.75.75 0 0 0-1.5 0v3a.75.75 0 0 0 1.5 0v-3Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>Changing this never touches entries that already exist — those keep whatever
+                status they have now.</span>
+            </div>
+
+            {tournament.approvalPolicy === null ? (
+              <p className="mt-3 text-xs text-gray-600">
+                Following the organization default. Choosing an option above sets it for this
+                tournament only.
+              </p>
+            ) : null}
+          </Card>
+
           <h2 className="mb-6 text-xl font-semibold text-white">
             Competitions
             <span className="ml-2 text-sm font-normal text-gray-500">({competitions.length})</span>

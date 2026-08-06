@@ -12,6 +12,9 @@ export type TournamentStatus =
 
 export type CompetitionStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
+/** 07_APPROVAL_WORKFLOW_ENGINE section 7.2. INHERIT clears a tournament's override. */
+export type ApprovalPolicy = 'AUTO_APPROVE' | 'DIRECT_SINGLE_APPROVAL'
+
 export type Tournament = {
   id: string
   organizationUnitId: string
@@ -22,6 +25,10 @@ export type Tournament = {
   startDate: string | null
   endDate: string | null
   publishedAt: string | null
+  /** The tournament's own choice, or null when it follows the organization. */
+  approvalPolicy: ApprovalPolicy | null
+  /** What applies once inheritance is resolved — show this, not the override. */
+  effectiveApprovalPolicy: ApprovalPolicy
   createdAt: string
 }
 
@@ -149,6 +156,13 @@ export function transitionTournament(id: string, action: TournamentAction) {
     `/tournaments/${id}/${action}`,
     { method: 'POST', body: JSON.stringify({}) },
   )
+}
+
+export function setApprovalPolicy(id: string, approvalPolicy: ApprovalPolicy | 'INHERIT') {
+  return request<Tournament>(`/tournaments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ approvalPolicy }),
+  })
 }
 
 export function deleteTournament(id: string) {

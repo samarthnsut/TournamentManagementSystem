@@ -185,9 +185,19 @@ export default function CompetitionDetailView({
   const step = nextCompetitionAction(competition.status)
   const isTeamEvent = competition.participantType === 'TEAM'
   const canEnter = competition.status === 'OPEN' && hasActiveForm
-  const liveRegistrations = (registrationsQuery.data ?? []).filter(
-    (registration) => registration.status !== 'WITHDRAWN',
-  )
+
+  const allRegistrations = registrationsQuery.data ?? []
+  const liveRegistrations = allRegistrations.filter((r) => r.status !== 'WITHDRAWN')
+  const pendingCount = allRegistrations.filter((r) => r.status === 'PENDING').length
+  const approvedCount = allRegistrations.filter((r) => r.status === 'APPROVED').length
+  const submittedCount = allRegistrations.length
+
+  // No published form means the builder is the only thing to show, so it is a draft either way.
+  const isDraftingForm = !hasActiveForm || isEditingForm
+  const versionCount = versionsQuery.data?.length ?? 0
+  const nextVersion = (activeForm?.version ?? 0) + 1
+
+  const autoApproves = tournamentQuery.data?.effectiveApprovalPolicy === 'AUTO_APPROVE'
 
   const handleRegister = (event: React.FormEvent) => {
     event.preventDefault()
@@ -247,17 +257,27 @@ export default function CompetitionDetailView({
 
         <div className="mx-auto max-w-5xl space-y-8 px-6 py-8 sm:px-8 sm:py-12">
           {/* Registration form definition */}
-          <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Card className={isDraftingForm ? 'border-l-4 border-l-amber-500' : ''}>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-white">Registration form</h2>
+                <h2 className="text-lg font-semibold text-white">
+                  {isDraftingForm ? 'Editing the registration form' : 'Registration form'}
+                </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  {hasActiveForm
-                    ? `Version ${activeForm?.version} is live. Publishing changes creates a new version; existing entries keep the version they answered.`
-                    : 'Entries cannot be accepted until a form is published.'}
+                  {isDraftingForm
+                    ? hasActiveForm
+                      ? `Draft of version ${nextVersion} · not visible to entrants yet`
+                      : 'Not published yet · entrants cannot enter until you publish'
+                    : `Version ${activeForm?.version} is live${
+                        versionCount > 1 ? ` · ${versionCount} versions published` : ''
+                      }`}
                 </p>
               </div>
-              {hasActiveForm && !isEditingForm ? (
+              {isDraftingForm ? (
+                <span className="whitespace-nowrap rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
+                  Unpublished draft
+                </span>
+              ) : (
                 <Button
                   variant="secondary"
                   className="px-4 py-2 text-sm"
@@ -265,17 +285,60 @@ export default function CompetitionDetailView({
                 >
                   Edit form
                 </Button>
-              ) : null}
+              )}
             </div>
 
-            {!hasActiveForm || isEditingForm ? (
+            {isDraftingForm ? (
               <>
-                <FormBuilder
-                  fields={builderFields}
-                  onChange={setBuilderFields}
-                  disabled={publishForm.isPending}
-                />
-                <div className="mt-5 flex flex-wrap gap-3">
+                {/* The consequence, stated where the decision is made rather than above it. */}
+                <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M8.49 3.17a1.75 1.75 0 0 1 3.02 0l6.28 10.8A1.75 1.75 0 0 1 16.28 16.6H3.72a1.75 1.75 0 0 1-1.51-2.63l6.28-10.8ZM10 7a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 10 7Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>
+                    {hasActiveForm ? (
+                      <>
+                        Publishing creates <strong className="font-semibold">version {nextVersion}</strong>.
+                        {submittedCount > 0
+                          ? ` The ${submittedCount} ${
+                              submittedCount === 1 ? 'entry' : 'entries'
+                            } already submitted keep version ${activeForm?.version} and stay valid.`
+                          : ' No entries have been submitted yet.'}
+                      </>
+                    ) : (
+                      <>Publishing makes this form live so entrants can start submitting.</>
+                    )}
+                  </span>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+                  <FormBuilder
+                    fields={builderFields}
+                    onChange={setBuilderFields}
+                    disabled={publishForm.isPending}
+                  />
+
+                  {/* Kept alongside the builder — this is exactly when you want to see it. */}
+                  <div>
+                    <p className="mb-3 font-mono text-xs uppercase tracking-wider text-gray-500">
+                      What entrants see
+                    </p>
+                    <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-4">
+                      <DynamicForm
+                        schema={buildSchema(builderFields)}
+                        values={{}}
+                        onChange={() => {}}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-3 border-t border-dark-border pt-5">
                   <Button
                     className="btn-gradient"
                     disabled={publishForm.isPending}
@@ -284,37 +347,30 @@ export default function CompetitionDetailView({
                     {publishForm.isPending
                       ? 'Publishing…'
                       : hasActiveForm
-                        ? `Publish version ${(activeForm?.version ?? 0) + 1}`
+                        ? `Publish version ${nextVersion}`
                         : 'Publish form'}
                   </Button>
-                  {isEditingForm ? (
+                  {hasActiveForm ? (
                     <Button
                       variant="ghost"
                       onClick={() => {
                         setIsEditingForm(false)
-                        setBuilderFields(
-                          activeForm ? fieldsFromSchema(activeForm.schema) : [emptyField()],
-                        )
+                        setBuilderFields(fieldsFromSchema(activeForm!.schema))
                       }}
                     >
-                      Cancel
+                      Discard changes
                     </Button>
                   ) : null}
                 </div>
               </>
             ) : (
               <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-5">
-                <p className="mb-4 text-xs uppercase tracking-wide text-gray-500">Preview</p>
+                <p className="mb-4 font-mono text-xs uppercase tracking-wider text-gray-500">
+                  What entrants see
+                </p>
                 <DynamicForm schema={activeForm!.schema} values={{}} onChange={() => {}} readOnly />
               </div>
             )}
-
-            {(versionsQuery.data?.length ?? 0) > 1 ? (
-              <p className="mt-4 text-xs text-gray-500">
-                {versionsQuery.data?.length} versions published. Earlier entries still render
-                against the version they were submitted under.
-              </p>
-            ) : null}
           </Card>
 
           {/* Enter a participant */}
@@ -430,38 +486,76 @@ export default function CompetitionDetailView({
 
           {/* Entries */}
           <Card>
-            <h2 className="mb-4 text-lg font-semibold text-white">
-              Entries
-              <span className="ml-2 text-sm font-normal text-gray-500">
-                ({liveRegistrations.length}
-                {competition.maxRegistrations ? ` of ${competition.maxRegistrations}` : ''})
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-white">Entries</h2>
+              {/* The two questions an organizer actually has: how many need me, and how full is it. */}
+              <div className="flex flex-wrap items-center gap-2">
+                {pendingCount > 0 ? (
+                  <span className="whitespace-nowrap rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
+                    {pendingCount} awaiting approval
+                  </span>
+                ) : null}
+                {approvedCount > 0 ? (
+                  <span className="whitespace-nowrap rounded-full border border-green-500/40 bg-green-500/20 px-3 py-1 text-xs font-semibold text-green-300">
+                    {approvedCount} accepted
+                  </span>
+                ) : null}
+                <span className="whitespace-nowrap rounded-full border border-dark-border bg-white/5 px-3 py-1 text-xs font-semibold text-gray-400">
+                  {liveRegistrations.length}
+                  {competition.maxRegistrations ? ` of ${competition.maxRegistrations}` : ''} places
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-accent-blue/35 bg-accent-blue/10 px-4 py-3 text-sm text-blue-200">
+              <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11a.75.75 0 0 0-1.5 0v.5a.75.75 0 0 0 1.5 0V7Zm0 3.25a.75.75 0 0 0-1.5 0v3a.75.75 0 0 0 1.5 0v-3Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>
+                {autoApproves
+                  ? 'This tournament accepts entries automatically. Change it in tournament settings.'
+                  : 'Entries need approval before they count. Change it in tournament settings.'}
               </span>
-            </h2>
+            </div>
 
             {registrationsQuery.isLoading ? (
               <p className="text-sm text-gray-400">Loading entries…</p>
-            ) : (registrationsQuery.data?.length ?? 0) === 0 ? (
+            ) : submittedCount === 0 ? (
               <p className="text-sm text-gray-500">No entries yet.</p>
             ) : (
               <div className="space-y-3">
-                {registrationsQuery.data?.map((registration) => (
+                {allRegistrations.map((registration) => (
                   <div
                     key={registration.id}
-                    className="flex flex-col gap-3 rounded-lg border border-dark-border bg-dark-bg/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="rounded-lg border border-dark-border bg-dark-bg/40 p-4"
                   >
-                    <div>
-                      <p className="font-medium text-white">{registration.participant.displayName}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Submitted {new Date(registration.submittedAt).toLocaleString('en-IN')} · form v
-                        {registration.formVersion}
-                        {registration.participant.members.length > 0
-                          ? ` · ${registration.participant.members.length} squad members`
-                          : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="font-semibold text-white">{registration.participant.displayName}</p>
                       <StatusBadge status={registration.status} />
-                      {registration.status === 'PENDING' ? (
+                    </div>
+
+                    {/* Separated so each fact is scannable rather than one grey run-on line. */}
+                    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
+                      {registration.participant.members.length > 0 ? (
+                        <span>{registration.participant.members.length} squad members</span>
+                      ) : null}
+                      <span>Answered form v{registration.formVersion}</span>
+                      <span>
+                        {new Date(registration.submittedAt).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+
+                    {registration.status === 'PENDING' ? (
+                      <div className="mt-3 border-t border-dark-border pt-3">
                         <button
                           type="button"
                           onClick={() => withdraw.mutate(registration.id)}
@@ -470,8 +564,8 @@ export default function CompetitionDetailView({
                         >
                           Withdraw
                         </button>
-                      ) : null}
-                    </div>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

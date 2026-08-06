@@ -1,5 +1,6 @@
 package com.acme.tms.tournament.dto;
 
+import com.acme.tms.common.domain.RegistrationApprovalPolicy;
 import com.acme.tms.tournament.domain.TournamentStatus;
 
 import java.time.Instant;
@@ -16,6 +17,10 @@ public record TournamentResponse(
     LocalDate startDate,
     LocalDate endDate,
     Instant publishedAt,
+    /** The tournament's own choice, or null when it follows the organization. */
+    RegistrationApprovalPolicy approvalPolicy,
+    /** What actually applies once inheritance is resolved — what the UI should show. */
+    RegistrationApprovalPolicy effectiveApprovalPolicy,
     Instant createdAt
 ) {
 }

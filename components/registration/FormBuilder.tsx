@@ -157,8 +157,43 @@ export default function FormBuilder({
   return (
     <div className="space-y-4">
       {fields.map((field, index) => (
-        <div key={index} className="rounded-lg border border-dark-border bg-dark-bg/40 p-4">
-          <div className="grid gap-3 sm:grid-cols-[1fr_10rem]">
+        <div key={index} className="rounded-lg border border-dark-border bg-dark-bg/40 p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <span className="font-mono text-xs uppercase tracking-wider text-gray-500">
+              Question {index + 1}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => move(index, -1)}
+                disabled={disabled || index === 0}
+                className="rounded px-2 py-1 text-gray-500 transition hover:text-white disabled:opacity-25"
+                aria-label={`Move question ${index + 1} up`}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(index, 1)}
+                disabled={disabled || index === fields.length - 1}
+                className="rounded px-2 py-1 text-gray-500 transition hover:text-white disabled:opacity-25"
+                aria-label={`Move question ${index + 1} down`}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(index)}
+                disabled={disabled}
+                className="rounded px-2 py-1 text-gray-500 transition hover:text-red-300 disabled:opacity-25"
+                aria-label={`Remove question ${index + 1}`}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-400">Question</label>
               <Input
@@ -207,8 +242,8 @@ export default function FormBuilder({
             </div>
           ) : null}
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-300">
+          <div className="mt-4 border-t border-dark-border pt-3">
+            <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-300">
               <input
                 type="checkbox"
                 checked={field.required}
@@ -218,35 +253,6 @@ export default function FormBuilder({
               />
               Required
             </label>
-
-            <div className="flex items-center gap-2 text-sm">
-              <button
-                type="button"
-                onClick={() => move(index, -1)}
-                disabled={disabled || index === 0}
-                className="rounded px-2 py-1 text-gray-400 transition hover:text-white disabled:opacity-30"
-                aria-label="Move up"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => move(index, 1)}
-                disabled={disabled || index === fields.length - 1}
-                className="rounded px-2 py-1 text-gray-400 transition hover:text-white disabled:opacity-30"
-                aria-label="Move down"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => remove(index)}
-                disabled={disabled}
-                className="rounded px-2 py-1 text-red-300 transition hover:text-red-200 disabled:opacity-30"
-              >
-                Remove
-              </button>
-            </div>
           </div>
         </div>
       ))}
