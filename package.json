@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NEXT_DIST_DIR=.next-dev next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "rm -rf .next",
+    "clean": "rm -rf .next .next-dev out",
     "export": "npm run build",
     "deploy": "npm run export && gh-pages -d out"
   },
