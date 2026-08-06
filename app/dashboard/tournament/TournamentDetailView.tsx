@@ -9,6 +9,7 @@ import Card from '../../../components/ui/Card'
 import Input from '../../../components/ui/Input'
 import StatusBadge from '../../../components/ui/StatusBadge'
 import Select from '../../../components/ui/Select'
+import { useAuth } from '../../../lib/useAuth'
 import { buildConfigFor, hasPresetFor } from '../../../lib/sportPresets'
 import {
   createCompetition,
@@ -54,6 +55,7 @@ function formatDateRange(startDate: string | null, endDate: string | null) {
 
 export default function TournamentDetailView({ tournamentId }: { tournamentId: string }) {
   const queryClient = useQueryClient()
+  const { can } = useAuth()
   const [actionError, setActionError] = useState('')
   const [competitionName, setCompetitionName] = useState('')
   const [sportCode, setSportCode] = useState('')
@@ -199,9 +201,12 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
   }
 
   const advance = nextAction(tournament.status)
-  const isCancellable = !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(tournament.status)
+  const isCancellable =
+    can('tournament:transition') && !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(tournament.status)
   const competitions = competitionsQuery.data ?? []
-  const canAddCompetitions = !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(tournament.status)
+  const canAddCompetitions =
+    can('competition:create') && !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(tournament.status)
+  const canConfigureApproval = can('tournament:update')
 
   const sportOptions = (sportsQuery.data ?? [])
     .filter((sport) => hasPresetFor(sport.code))
@@ -235,7 +240,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
             ) : null}
 
             <div className="mt-6 flex flex-wrap gap-3">
-              {advance ? (
+              {advance && can('tournament:transition') ? (
                 <Button
                   className="btn-gradient"
                   disabled={tournamentTransition.isPending}
@@ -271,6 +276,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
 
         <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8 sm:py-12">
           {/* Entry approval — applies to every competition in this tournament. */}
+          {canConfigureApproval ? (
           <Card className="mb-8">
             <h2 className="text-lg font-semibold text-white">Entry approval</h2>
             <p className="mt-1 text-sm text-gray-500">
@@ -321,6 +327,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
               </p>
             ) : null}
           </Card>
+          ) : null}
 
           <h2 className="mb-6 text-xl font-semibold text-white">
             Competitions

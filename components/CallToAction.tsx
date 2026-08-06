@@ -6,7 +6,7 @@ import { useAuth } from '../lib/useAuth'
 
 /** The closing pitch on the home page. Signed-in users get somewhere to go instead of a sales pitch. */
 export default function CallToAction() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, can } = useAuth()
 
   return (
     <section className="mx-auto max-w-7xl px-6 py-20 sm:py-28">
@@ -28,9 +28,11 @@ export default function CallToAction() {
             <div className="mt-8 flex min-h-[3.25rem] flex-col justify-center gap-4 sm:flex-row">
               {isLoading ? null : isAuthenticated ? (
                 <>
-                  <Link href="/dashboard/create">
-                    <Button className="btn-gradient w-full sm:w-auto">Create a tournament</Button>
-                  </Link>
+                  {can('tournament:create') ? (
+                    <Link href="/dashboard/create">
+                      <Button className="btn-gradient w-full sm:w-auto">Create a tournament</Button>
+                    </Link>
+                  ) : null}
                   <Link href="/dashboard">
                     <Button variant="secondary" className="w-full sm:w-auto">
                       View my tournaments

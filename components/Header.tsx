@@ -7,7 +7,7 @@ import Logo from './Logo'
 import { useAuth } from '../lib/useAuth'
 
 export default function Header() {
-  const { user, isAuthenticated, isLoading, signOut } = useAuth()
+  const { user, isAuthenticated, isLoading, can, signOut } = useAuth()
   const pathname = usePathname()
 
   // No point offering a link to the page you are already on.
@@ -33,10 +33,12 @@ export default function Header() {
               <Link href="/dashboard" className="text-gray-300 transition hover:text-white">
                 Dashboard
               </Link>
-              <Link href="/dashboard/approvals" className="text-gray-300 transition hover:text-white">
-                Approvals
-              </Link>
-              {isOnCreatePage ? null : (
+              {can('registration:approve') ? (
+                <Link href="/dashboard/approvals" className="text-gray-300 transition hover:text-white">
+                  Approvals
+                </Link>
+              ) : null}
+              {isOnCreatePage || !can('tournament:create') ? null : (
                 <Link href="/dashboard/create">
                   <Button className="btn-gradient whitespace-nowrap px-4 py-2 text-sm">
                     Create Tournament

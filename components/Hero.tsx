@@ -12,7 +12,7 @@ const stats = [
 ]
 
 export default function Hero() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, can } = useAuth()
 
   return (
     <section className="relative overflow-hidden bg-gradient-dark text-white">
@@ -64,11 +64,13 @@ export default function Hero() {
                   <Link href="/dashboard">
                     <Button className="btn-gradient w-full sm:w-auto">Go to dashboard</Button>
                   </Link>
-                  <Link href="/dashboard/create">
-                    <Button variant="secondary" className="w-full sm:w-auto">
-                      Create a tournament
-                    </Button>
-                  </Link>
+                  {can('tournament:create') ? (
+                    <Link href="/dashboard/create">
+                      <Button variant="secondary" className="w-full sm:w-auto">
+                        Create a tournament
+                      </Button>
+                    </Link>
+                  ) : null}
                 </>
               ) : (
                 <>

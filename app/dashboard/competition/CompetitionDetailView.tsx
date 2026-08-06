@@ -15,6 +15,7 @@ import FormBuilder, {
   fieldsFromSchema,
   type BuilderField,
 } from '../../../components/registration/FormBuilder'
+import { useAuth } from '../../../lib/useAuth'
 import { approveRegistration, rejectRegistration } from '../../../lib/api/approvals'
 import {
   getActiveFormDefinition,
@@ -42,6 +43,7 @@ export default function CompetitionDetailView({
   tournamentId: string
 }) {
   const queryClient = useQueryClient()
+  const { can } = useAuth()
   const [error, setError] = useState('')
   const [builderFields, setBuilderFields] = useState<BuilderField[]>([emptyField()])
   const [isEditingForm, setIsEditingForm] = useState(false)
@@ -208,7 +210,7 @@ export default function CompetitionDetailView({
 
   const step = nextCompetitionAction(competition.status)
   const isTeamEvent = competition.participantType === 'TEAM'
-  const canEnter = competition.status === 'OPEN' && hasActiveForm
+  const canEnter = competition.status === 'OPEN' && hasActiveForm && can('registration:create')
 
   const allRegistrations = registrationsQuery.data ?? []
   const liveRegistrations = allRegistrations.filter((r) => r.status !== 'WITHDRAWN')
@@ -217,7 +219,10 @@ export default function CompetitionDetailView({
   const submittedCount = allRegistrations.length
 
   // No published form means the builder is the only thing to show, so it is a draft either way.
-  const isDraftingForm = !hasActiveForm || isEditingForm
+  const canEditForm = can('form:create')
+  const canDecide = can('registration:approve')
+  // Without form permissions there is nothing to draft, only the published form to read.
+  const isDraftingForm = canEditForm && (!hasActiveForm || isEditingForm)
   const versionCount = versionsQuery.data?.length ?? 0
   const nextVersion = (activeForm?.version ?? 0) + 1
 
@@ -260,7 +265,7 @@ export default function CompetitionDetailView({
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              {step ? (
+              {step && can('competition:transition') ? (
                 <Button
                   className="btn-gradient"
                   disabled={transition.isPending}
@@ -291,7 +296,7 @@ export default function CompetitionDetailView({
                   {isDraftingForm
                     ? hasActiveForm
                       ? `Draft of version ${nextVersion} · not visible to entrants yet`
-                      : 'Not published yet · entrants cannot enter until you publish'
+                      : 'Not published yet · entrants cannot enter until it is published'
                     : `Version ${activeForm?.version} is live${
                         versionCount > 1 ? ` · ${versionCount} versions published` : ''
                       }`}
@@ -301,7 +306,7 @@ export default function CompetitionDetailView({
                 <span className="whitespace-nowrap rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
                   Unpublished draft
                 </span>
-              ) : (
+              ) : !canEditForm ? null : (
                 <Button
                   variant="secondary"
                   className="px-4 py-2 text-sm"
@@ -580,6 +585,8 @@ export default function CompetitionDetailView({
 
                     {registration.status === 'PENDING' ? (
                       <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-dark-border pt-3">
+                        {canDecide ? (
+                        <>
                         <button
                           type="button"
                           onClick={() => approve.mutate(registration.id)}
@@ -596,6 +603,8 @@ export default function CompetitionDetailView({
                         >
                           Reject
                         </button>
+                        </>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => withdraw.mutate(registration.id)}

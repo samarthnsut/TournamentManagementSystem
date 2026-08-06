@@ -7,6 +7,9 @@ export type { AuthResponse, UserSummary } from './session'
 export type MeResponse = {
   id: string
   email: string
+  /** Permission codes the caller holds anywhere; the API still enforces scope on every call. */
+  permissions: string[]
+  roles: string[]
 }
 
 export type RegisterPayload = {

@@ -7,6 +7,7 @@ import com.acme.tms.identity.dto.LoginRequest;
 import com.acme.tms.identity.dto.LogoutRequest;
 import com.acme.tms.identity.dto.RefreshRequest;
 import com.acme.tms.identity.dto.TokenResponse;
+import com.acme.tms.identity.repository.UserRoleAssignmentRepository;
 import com.acme.tms.identity.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,9 +28,14 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRoleAssignmentRepository userRoleAssignmentRepository;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+        AuthService authService,
+        UserRoleAssignmentRepository userRoleAssignmentRepository
+    ) {
         this.authService = authService;
+        this.userRoleAssignmentRepository = userRoleAssignmentRepository;
     }
 
     @PostMapping("/register")
@@ -58,11 +65,25 @@ public class AuthController {
         return authService.acceptInvite(request);
     }
 
+    /**
+     * Includes the caller's permission and role codes so the UI can hide actions they cannot take.
+     * The API still enforces every one of them — this only stops us offering a button that is
+     * guaranteed to fail.
+     */
     @GetMapping("/me")
     public Map<String, Object> me(@AuthenticationPrincipal AuthenticatedUser user) {
+        List<String> permissions = userRoleAssignmentRepository.findScopedPermissions(user.userId())
+            .stream()
+            .map(UserRoleAssignmentRepository.ScopedPermissionRow::getPermissionCode)
+            .distinct()
+            .sorted()
+            .toList();
+
         return Map.of(
             "id", user.userId(),
-            "email", user.email()
+            "email", user.email(),
+            "permissions", permissions,
+            "roles", userRoleAssignmentRepository.findRoleCodes(user.userId())
         );
     }
 }

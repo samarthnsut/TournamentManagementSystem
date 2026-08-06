@@ -7,6 +7,7 @@ import Header from '../../components/Header'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
+import { useAuth } from '../../lib/useAuth'
 import {
   getTournaments,
   nextAction,
@@ -84,6 +85,7 @@ export default function DashboardPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [actionError, setActionError] = useState<string>('')
   const queryClient = useQueryClient()
+  const { can } = useAuth()
 
   const { data: tournaments = [], isLoading, isError, error } = useQuery({
     queryKey: ['tournaments'],
@@ -162,9 +164,11 @@ export default function DashboardPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1"
               />
-              <Link href="/dashboard/create">
-                <Button className="btn-gradient whitespace-nowrap w-full sm:w-auto">+ Create Tournament</Button>
-              </Link>
+              {can('tournament:create') ? (
+                <Link href="/dashboard/create">
+                  <Button className="btn-gradient whitespace-nowrap w-full sm:w-auto">+ Create Tournament</Button>
+                </Link>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -278,9 +282,11 @@ export default function DashboardPage() {
                   ? 'No tournaments yet.'
                   : 'No tournaments match your search.'}
               </p>
-              <Link href="/dashboard/create">
-                <Button className="btn-gradient inline-flex">Create Your First Tournament</Button>
-              </Link>
+              {can('tournament:create') ? (
+                <Link href="/dashboard/create">
+                  <Button className="btn-gradient inline-flex">Create Your First Tournament</Button>
+                </Link>
+              ) : null}
             </div>
           )}
         </div>
