@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import Button from './ui/Button'
+import { useAuth } from '../lib/useAuth'
 
 const stats = [
   { label: 'Federation clients', value: '18+', accent: 'text-accent-orange' },
@@ -9,6 +12,8 @@ const stats = [
 ]
 
 export default function Hero() {
+  const { user, isAuthenticated, isLoading } = useAuth()
+
   return (
     <section className="relative overflow-hidden bg-gradient-dark text-white">
       <div className="pointer-events-none absolute inset-0">
@@ -24,28 +29,59 @@ export default function Hero() {
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-dark-surface/50 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-gradient-brand" />
               <span className="text-sm font-medium text-gray-200">
-                Infinite possibilities for tournament management
+                {isAuthenticated
+                  ? `Signed in as ${user?.displayName}`
+                  : 'Infinite possibilities for tournament management'}
               </span>
             </div>
 
-            <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-              <span className="text-gradient-brand">Revolutionize</span> sports tournament management
-            </h1>
+            {isAuthenticated ? (
+              <>
+                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                  Welcome back, <span className="text-gradient-brand">{user?.displayName}</span>
+                </h1>
+                <p className="text-lg leading-relaxed text-gray-300">
+                  Pick up where you left off — review your tournaments, publish the ones that are
+                  ready, and open registration when the time comes.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                  <span className="text-gradient-brand">Revolutionize</span> sports tournament management
+                </h1>
+                <p className="text-lg leading-relaxed text-gray-300">
+                  Empower federations, organizers, and athletes with a cutting-edge platform—from
+                  registration and fixtures to live leaderboards and multi-tenant event portals.
+                </p>
+              </>
+            )}
 
-            <p className="text-lg leading-relaxed text-gray-300">
-              Empower federations, organizers, and athletes with a cutting-edge platform—from
-              registration and fixtures to live leaderboards and multi-tenant event portals.
-            </p>
-
-            <div className="flex flex-col gap-4 pt-2 sm:flex-row">
-              <Link href="/signup">
-                <Button className="btn-gradient w-full sm:w-auto">Get started</Button>
-              </Link>
-              <Link href="/signin">
-                <Button variant="secondary" className="w-full sm:w-auto">
-                  Request demo
-                </Button>
-              </Link>
+            {/* Held empty until the session is known, so the buttons never flip after paint. */}
+            <div className="flex min-h-[3.25rem] flex-col gap-4 pt-2 sm:flex-row">
+              {isLoading ? null : isAuthenticated ? (
+                <>
+                  <Link href="/dashboard">
+                    <Button className="btn-gradient w-full sm:w-auto">Go to dashboard</Button>
+                  </Link>
+                  <Link href="/dashboard/create">
+                    <Button variant="secondary" className="w-full sm:w-auto">
+                      Create a tournament
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/signup">
+                    <Button className="btn-gradient w-full sm:w-auto">Get started</Button>
+                  </Link>
+                  <Link href="/signin">
+                    <Button variant="secondary" className="w-full sm:w-auto">
+                      Request demo
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

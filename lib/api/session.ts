@@ -19,8 +19,21 @@ export type AuthResponse = {
 
 const AUTH_STORAGE_KEY = 'tms_auth'
 
+/**
+ * The browser only fires `storage` in *other* tabs, so components in this one would not notice a
+ * sign-in until a reload. This event closes that gap.
+ */
+export const AUTH_CHANGED_EVENT = 'tms:auth-changed'
+
+function announceChange() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+  }
+}
+
 export function storeAuth(auth: AuthResponse) {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth))
+  announceChange()
 }
 
 export function getStoredAuth(): AuthResponse | null {
@@ -45,5 +58,6 @@ export function getStoredAuth(): AuthResponse | null {
 export function clearStoredAuth() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(AUTH_STORAGE_KEY)
+    announceChange()
   }
 }

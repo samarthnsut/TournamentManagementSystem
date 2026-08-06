@@ -1,10 +1,9 @@
-import Link from 'next/link'
 import Header from '../components/Header'
 import Hero from '../components/Hero'
 import Footer from '../components/Footer'
 import SectionHeading from '../components/SectionHeading'
 import FeatureCard from '../components/FeatureCard'
-import Button from '../components/ui/Button'
+import CallToAction from '../components/CallToAction'
 
 const features = [
   {
@@ -95,33 +94,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-20 sm:py-28">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-brand p-[1px]">
-          <div className="relative rounded-[23px] bg-dark-bg px-8 py-12 text-center sm:px-12 sm:py-16">
-            <div className="pointer-events-none absolute inset-0 opacity-40">
-              <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-accent-orange/40 blur-3xl" />
-              <div className="absolute -right-20 bottom-0 h-48 w-48 rounded-full bg-accent-blue/40 blur-3xl" />
-            </div>
-            <div className="relative">
-              <h2 className="text-3xl font-bold sm:text-4xl">Ready to transform your next event?</h2>
-              <p className="mx-auto mt-4 max-w-xl text-gray-300">
-                Launch your first tournament portal in minutes and scale across federations with
-                confidence.
-              </p>
-              <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-                <Link href="/signup">
-                  <Button className="btn-gradient w-full sm:w-auto">Start free trial</Button>
-                </Link>
-                <Link href="/signin">
-                  <Button variant="secondary" className="w-full sm:w-auto">
-                    Talk to sales
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CallToAction />
 
       <Footer />
     </div>

@@ -37,9 +37,24 @@ export default function SignUpPage() {
     const data = new FormData(event.currentTarget)
     const password = String(data.get('password') ?? '')
     const confirm = String(data.get('confirmPassword') ?? '')
+    const role = String(data.get('role') ?? '')
+
+    // The role lives in a hidden input, and browsers exempt those from constraint validation, so
+    // `required` on it does nothing — check it here instead.
+    if (!role) {
+      setError('Please select your role.')
+      return
+    }
 
     if (password !== confirm) {
       setError('Passwords do not match.')
+      return
+    }
+
+    // Kept as an explicit message rather than a disabled button: a button that does nothing when
+    // clicked reads as broken, with no hint about what is missing.
+    if (!acceptedTerms) {
+      setError('Please accept the Terms of Service and Privacy Policy to continue.')
       return
     }
 
@@ -113,7 +128,7 @@ export default function SignUpPage() {
           </span>
         </label>
 
-        <Button type="submit" className="btn-gradient w-full" disabled={!acceptedTerms || registerMutation.isPending}>
+        <Button type="submit" className="btn-gradient w-full" disabled={registerMutation.isPending}>
           {registerMutation.isPending ? 'Creating account...' : 'Create account'}
         </Button>
         {error ? <p className="text-center text-sm text-accent-pink">{error}</p> : null}
