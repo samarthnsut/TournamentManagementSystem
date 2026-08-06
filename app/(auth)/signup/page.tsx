@@ -8,6 +8,7 @@ import AuthLink from '../../../components/auth/AuthLink'
 import PasswordInput from '../../../components/auth/PasswordInput'
 import Input from '../../../components/ui/Input'
 import Button from '../../../components/ui/Button'
+import Select from '../../../components/ui/Select'
 import { register, storeAuth } from '../../../lib/api/auth'
 
 const roles = [
@@ -80,22 +81,7 @@ export default function SignUpPage() {
           <label htmlFor="role" className="mb-2 block text-sm font-medium text-gray-300">
             Role
           </label>
-          <select
-            id="role"
-            name="role"
-            required
-            className="w-full rounded-lg border border-dark-border bg-dark-surface px-4 py-3 text-white outline-none transition focus:border-accent-blue focus:ring-2 focus:ring-accent-blue/20"
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Select your role
-            </option>
-            {roles.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
+          <Select id="role" name="role" required options={roles} placeholder="Select your role" />
         </div>
 
         <div>

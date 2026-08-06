@@ -8,6 +8,7 @@ import Header from '../../../components/Header'
 import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
 import Card from '../../../components/ui/Card'
+import Select from '../../../components/ui/Select'
 import { createTournament } from '../../../lib/api/tournaments'
 import { getOrganizationUnits } from '../../../lib/api/organizations'
 
@@ -154,20 +155,14 @@ export default function CreateTournamentPage() {
                       <label htmlFor="organizationUnitId" className="block text-sm font-medium text-gray-300 mb-2">
                         Organizer *
                       </label>
-                      <select
+                      <Select
                         id="organizationUnitId"
-                        name="organizationUnitId"
                         value={ownerId}
-                        onChange={handleChange}
+                        onChange={(unitId) => setFormData({ ...formData, organizationUnitId: unitId })}
                         disabled={unitsLoading || organizationUnits.length === 0}
-                        className="w-full rounded-lg border border-dark-border bg-dark-surface px-4 py-3 text-white outline-none transition focus:border-accent-purple focus:ring-2 focus:ring-accent-purple/20 disabled:opacity-50"
-                      >
-                        {organizationUnits.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={unitsLoading ? 'Loading organizations…' : 'Select an organization'}
+                        options={organizationUnits.map((unit) => ({ value: unit.id, label: unit.name }))}
+                      />
                       {unitsError ? (
                         <p className="mt-1 text-xs text-red-300">
                           Could not load organizations. Check that you are signed in.
