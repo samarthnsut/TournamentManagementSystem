@@ -102,6 +102,33 @@ export function nextAction(status: TournamentStatus): { action: TournamentAction
   }
 }
 
+export type CompetitionAction = 'open' | 'close' | 'start' | 'complete' | 'cancel'
+
+/** The single next step for a competition, or null once it is finished. */
+export function nextCompetitionAction(
+  status: CompetitionStatus,
+): { action: CompetitionAction; label: string } | null {
+  switch (status) {
+    case 'DRAFT':
+      return { action: 'open', label: 'Open' }
+    case 'OPEN':
+      return { action: 'close', label: 'Close' }
+    case 'CLOSED':
+      return { action: 'start', label: 'Start' }
+    case 'IN_PROGRESS':
+      return { action: 'complete', label: 'Complete' }
+    default:
+      return null
+  }
+}
+
+export function transitionCompetition(id: string, action: CompetitionAction) {
+  return request<{ id: string; status: CompetitionStatus; transitionedAt: string }>(
+    `/competitions/${id}/${action}`,
+    { method: 'POST', body: JSON.stringify({}) },
+  )
+}
+
 export function getTournaments() {
   return request<Tournament[]>('/tournaments')
 }

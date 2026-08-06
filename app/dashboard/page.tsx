@@ -216,9 +216,11 @@ export default function DashboardPage() {
                     <div className="flex flex-col gap-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-white group-hover:text-accent-purple transition">
-                            {tournament.name}
-                          </h3>
+                          <Link href={`/dashboard/tournament?id=${tournament.id}`}>
+                            <h3 className="text-lg font-bold text-white transition hover:text-accent-purple">
+                              {tournament.name}
+                            </h3>
+                          </Link>
                           <p className="mt-1 text-sm text-gray-400">/t/{tournament.slug}</p>
                         </div>
                         <span
@@ -238,6 +240,11 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex gap-2 pt-2">
+                        <Link href={`/dashboard/tournament?id=${tournament.id}`} className="flex-1">
+                          <button className="w-full rounded-lg border border-dark-border bg-dark-surface px-3 py-2 text-sm font-medium text-gray-300 transition hover:border-accent-purple hover:text-accent-purple">
+                            Manage
+                          </button>
+                        </Link>
                         {advance ? (
                           <button
                             onClick={() => transition.mutate({ id: tournament.id, action: advance.action })}
