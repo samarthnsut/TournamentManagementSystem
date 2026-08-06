@@ -15,7 +15,7 @@ import FormBuilder, {
   fieldsFromSchema,
   type BuilderField,
 } from '../../../components/registration/FormBuilder'
-import { ApiError } from '../../../lib/api/client'
+import { approveRegistration, rejectRegistration } from '../../../lib/api/approvals'
 import {
   getActiveFormDefinition,
   getFormDefinitions,
@@ -140,6 +140,30 @@ export default function CompetitionDetailView({
       setMembers([])
       setAnswers({})
       setAnswerErrors({})
+      await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
+    },
+    onError: report,
+  })
+
+  const approve = useMutation({
+    mutationFn: (registrationId: string) => approveRegistration(registrationId),
+    onSuccess: async () => {
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
+    },
+    onError: report,
+  })
+
+  const reject = useMutation({
+    mutationFn: (registrationId: string) => {
+      const reason = window.prompt('Why is this entry being rejected? The entrant is told.')
+      if (!reason || !reason.trim()) {
+        return Promise.reject(new Error('A reason is required when rejecting.'))
+      }
+      return rejectRegistration(registrationId, reason.trim())
+    },
+    onSuccess: async () => {
+      setError('')
       await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
     },
     onError: report,
@@ -555,12 +579,28 @@ export default function CompetitionDetailView({
                     </div>
 
                     {registration.status === 'PENDING' ? (
-                      <div className="mt-3 border-t border-dark-border pt-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-dark-border pt-3">
+                        <button
+                          type="button"
+                          onClick={() => approve.mutate(registration.id)}
+                          disabled={approve.isPending}
+                          className="text-sm font-medium text-green-300 transition hover:text-green-200 disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => reject.mutate(registration.id)}
+                          disabled={reject.isPending}
+                          className="text-sm font-medium text-red-300 transition hover:text-red-200 disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
                         <button
                           type="button"
                           onClick={() => withdraw.mutate(registration.id)}
                           disabled={withdraw.isPending}
-                          className="text-sm text-gray-400 transition hover:text-red-300 disabled:opacity-50"
+                          className="text-sm text-gray-500 transition hover:text-gray-300 disabled:opacity-50"
                         >
                           Withdraw
                         </button>
