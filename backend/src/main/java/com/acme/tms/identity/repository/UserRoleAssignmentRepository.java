@@ -46,6 +46,18 @@ public interface UserRoleAssignmentRepository extends JpaRepository<UserRoleAssi
         """, nativeQuery = true)
     List<ScopedPermissionRow> findScopedPermissions(@Param("userId") UUID userId);
 
+    /**
+     * Role codes the user holds anywhere. Approval steps name a role rather than a permission, so
+     * deciding who may act on a step needs the codes themselves (doc 07 section 6).
+     */
+    @Query(value = """
+        select distinct r.code
+        from user_role_assignment ura
+        join role r on r.id = ura.role_id and r.deleted_at is null
+        where ura.user_id = :userId and ura.deleted_at is null
+        """, nativeQuery = true)
+    List<String> findRoleCodes(@Param("userId") UUID userId);
+
     interface ScopedPermissionRow {
         String getScopeType();
 

@@ -51,7 +51,8 @@ public abstract class AbstractIntegrationTest {
     @BeforeEach
     void resetState() {
         jdbcTemplate.execute("""
-            truncate registration_response, registration, registration_form_definition,
+            truncate approval_action, approval_instance, approval_step, approval_workflow,
+                     registration_response, registration, registration_form_definition,
                      team_member, participant,
                      competition, tournament, sport_configuration, venue,
                      user_role_assignment, refresh_token, app_user, organization_unit cascade

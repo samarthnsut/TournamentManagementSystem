@@ -33,6 +33,7 @@ import com.acme.tms.tournament.service.ApprovalPolicyService;
 import com.acme.tms.tournament.service.CompetitionService;
 import com.acme.tms.tournament.service.SportConfigurationService;
 import com.acme.tms.tournament.service.TournamentService;
+import com.acme.tms.workflow.service.ApprovalInstanceService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,6 +58,7 @@ public class RegistrationService {
     private final SportConfigurationService sportConfigurationService;
     private final TournamentService tournamentService;
     private final ApprovalPolicyService approvalPolicyService;
+    private final ApprovalInstanceService approvalInstanceService;
     private final ScopeEvaluator scopeEvaluator;
     private final CurrentUser currentUser;
     private final ObjectMapper objectMapper;
@@ -72,6 +74,7 @@ public class RegistrationService {
         SportConfigurationService sportConfigurationService,
         TournamentService tournamentService,
         ApprovalPolicyService approvalPolicyService,
+        ApprovalInstanceService approvalInstanceService,
         ScopeEvaluator scopeEvaluator,
         CurrentUser currentUser,
         ObjectMapper objectMapper
@@ -86,6 +89,7 @@ public class RegistrationService {
         this.sportConfigurationService = sportConfigurationService;
         this.tournamentService = tournamentService;
         this.approvalPolicyService = approvalPolicyService;
+        this.approvalInstanceService = approvalInstanceService;
         this.scopeEvaluator = scopeEvaluator;
         this.currentUser = currentUser;
         this.objectMapper = objectMapper;
@@ -140,8 +144,6 @@ public class RegistrationService {
 
         answerValidator.validate(request.answers(), formDefinitionService.parse(formDefinition.getSchema()));
 
-        // The tournament decides whether anyone has to look at this. Sprint 5's workflow engine
-        // will take precedence over the policy; until then the policy is the whole decision.
         RegistrationApprovalPolicy policy =
             approvalPolicyService.resolve(tournamentService.require(competition.getTournamentId()));
         Instant now = Instant.now();
@@ -151,13 +153,27 @@ public class RegistrationService {
         registration.setCompetitionId(competition.getId());
         registration.setParticipantId(participant.getId());
         registration.setSubmittedAt(now);
+        registration.setStatus(RegistrationStatus.PENDING);
+        registration = registrationRepository.save(registration);
+
+        // AUTO_APPROVE means nobody is reviewing anything, so no chain is opened at all. Otherwise
+        // the engine resolves the nearest configured workflow, falling back to an implicit single
+        // step — either way the entry now has an instance and shows up in someone's inbox.
         if (policy == RegistrationApprovalPolicy.AUTO_APPROVE) {
             registration.setStatus(RegistrationStatus.APPROVED);
             registration.setDecidedAt(now);
         } else {
-            registration.setStatus(RegistrationStatus.PENDING);
+            ApprovalInstanceService.Opened opened = approvalInstanceService.open(
+                ApprovalInstanceService.ENTITY_REGISTRATION,
+                registration.getId(),
+                competition.getOrganizationUnitId()
+            );
+            // A chain of nothing but notify-only steps has nobody to wait for.
+            if (opened.immediatelyApproved()) {
+                registration.setStatus(RegistrationStatus.APPROVED);
+                registration.setDecidedAt(now);
+            }
         }
-        registration = registrationRepository.save(registration);
 
         RegistrationResponse response = new RegistrationResponse();
         response.setRegistrationId(registration.getId());
@@ -183,6 +199,8 @@ public class RegistrationService {
 
         registration.setStatus(RegistrationStatus.WITHDRAWN);
         registration.setWithdrawnAt(Instant.now());
+        approvalInstanceService.cancelFor(
+            ApprovalInstanceService.ENTITY_REGISTRATION, registration.getId());
 
         return toResponse(registration);
     }

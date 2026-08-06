@@ -37,5 +37,26 @@ public interface OrganizationUnitRepository extends JpaRepository<OrganizationUn
         select id from subtree
         """, nativeQuery = true)
     List<UUID> findSubtreeIds(@Param("rootIds") Collection<UUID> rootIds);
+
+    /**
+     * The unit itself and every ancestor above it, nearest first.
+     *
+     * <p>Approval workflows resolve by walking upwards until one is found, so a state association
+     * can override the federation's chain for its own subtree (doc 07 section 4.1). The ordering is
+     * the whole point: the first hit wins.
+     */
+    @Query(value = """
+        with recursive ancestry as (
+            select id, parent_organization_unit_id, 0 as depth from organization_unit
+            where id = :unitId and deleted_at is null
+            union all
+            select parent.id, parent.parent_organization_unit_id, ancestry.depth + 1
+            from organization_unit parent
+            join ancestry on ancestry.parent_organization_unit_id = parent.id
+            where parent.deleted_at is null
+        )
+        select id from ancestry order by depth
+        """, nativeQuery = true)
+    List<UUID> findAncestorIdsNearestFirst(@Param("unitId") UUID unitId);
 }
 
