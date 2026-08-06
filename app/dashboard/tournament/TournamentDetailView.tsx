@@ -7,6 +7,7 @@ import Header from '../../../components/Header'
 import Button from '../../../components/ui/Button'
 import Card from '../../../components/ui/Card'
 import Input from '../../../components/ui/Input'
+import StatusBadge from '../../../components/ui/StatusBadge'
 import Select from '../../../components/ui/Select'
 import { buildConfigFor, hasPresetFor } from '../../../lib/sportPresets'
 import {
@@ -21,35 +22,8 @@ import {
   transitionCompetition,
   transitionTournament,
   type CompetitionAction,
-  type CompetitionStatus,
   type TournamentAction,
-  type TournamentStatus,
 } from '../../../lib/api/tournaments'
-
-const TOURNAMENT_BADGE: Record<TournamentStatus, string> = {
-  DRAFT: 'bg-gray-700/30 text-gray-300 border border-gray-600/40',
-  PUBLISHED: 'bg-accent-purple/20 text-accent-purple border border-accent-purple/40',
-  REGISTRATION_OPEN: 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/40',
-  REGISTRATION_CLOSED: 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/30',
-  IN_PROGRESS: 'bg-accent-orange/20 text-accent-orange border border-accent-orange/40',
-  COMPLETED: 'bg-green-500/20 text-green-300 border border-green-500/40',
-  CANCELLED: 'bg-red-500/20 text-red-300 border border-red-500/40',
-  ARCHIVED: 'bg-gray-800/40 text-gray-400 border border-gray-700/40',
-}
-
-const COMPETITION_BADGE: Record<CompetitionStatus, string> = {
-  DRAFT: 'bg-gray-700/30 text-gray-300 border border-gray-600/40',
-  OPEN: 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/40',
-  CLOSED: 'bg-accent-purple/20 text-accent-purple border border-accent-purple/40',
-  IN_PROGRESS: 'bg-accent-orange/20 text-accent-orange border border-accent-orange/40',
-  COMPLETED: 'bg-green-500/20 text-green-300 border border-green-500/40',
-  CANCELLED: 'bg-red-500/20 text-red-300 border border-red-500/40',
-}
-
-function humanize(status: string) {
-  const lower = status.replace(/_/g, ' ').toLowerCase()
-  return lower.charAt(0).toUpperCase() + lower.slice(1)
-}
 
 function formatDateRange(startDate: string | null, endDate: string | null) {
   if (!startDate && !endDate) {
@@ -229,13 +203,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                   /t/{tournament.slug} · {formatDateRange(tournament.startDate, tournament.endDate)}
                 </p>
               </div>
-              <span
-                className={`self-start rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                  TOURNAMENT_BADGE[tournament.status]
-                }`}
-              >
-                {humanize(tournament.status)}
-              </span>
+              <StatusBadge status={tournament.status} className="self-start" />
             </div>
 
             {tournament.description ? (
@@ -302,7 +270,13 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                   <Card key={competition.id}>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{competition.name}</h3>
+                        <Link
+                          href={`/dashboard/competition?id=${competition.id}&tournamentId=${tournamentId}`}
+                        >
+                          <h3 className="text-lg font-semibold text-white transition hover:text-accent-purple">
+                            {competition.name}
+                          </h3>
+                        </Link>
                         <p className="mt-1 text-sm text-gray-500">
                           {competition.sportCode}
                           {competition.participantType ? ` · ${competition.participantType}` : ''}
@@ -312,13 +286,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                            COMPETITION_BADGE[competition.status]
-                          }`}
-                        >
-                          {humanize(competition.status)}
-                        </span>
+                        <StatusBadge status={competition.status} />
                         {step ? (
                           <Button
                             variant="secondary"
