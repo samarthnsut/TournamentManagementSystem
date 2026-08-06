@@ -12,3 +12,4 @@ backend/.idea
 backend/build
 backend/.gradle
 backend/gradle.properties
+tsconfig.tsbuildinfo
