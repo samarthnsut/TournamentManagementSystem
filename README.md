@@ -29,3 +29,9 @@ Create `.env.local` from `.env.local.example` before starting the frontend:
 ```text
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
 ```
+
+## Signing in locally
+
+Start the backend with the `dev` profile and it seeds a demo organization tree with one user per
+role. See [`TEST_ACCOUNTS.md`](TEST_ACCOUNTS.md) for the list — `haryana.admin@example.com` with
+password `StrongPass123` is the usual starting point.

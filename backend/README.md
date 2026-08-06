@@ -89,6 +89,9 @@ cd backend
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
+The seeded accounts and the tree they belong to are listed in
+[`TEST_ACCOUNTS.md`](../TEST_ACCOUNTS.md).
+
 Run the tests. The 44 integration tests start a throwaway PostgreSQL 16 container, so Docker must be
 running; the 5 `JwtServiceTest` cases are pure unit tests and run without it:
 
