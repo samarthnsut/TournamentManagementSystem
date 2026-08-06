@@ -392,13 +392,18 @@ export default function CompetitionDetailView({
                   ) : null}
                 </div>
               </>
-            ) : (
+            ) : activeForm ? (
               <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-5">
                 <p className="mb-4 font-mono text-xs uppercase tracking-wider text-gray-500">
                   What entrants see
                 </p>
-                <DynamicForm schema={activeForm!.schema} values={{}} onChange={() => {}} readOnly />
+                <DynamicForm schema={activeForm.schema} values={{}} onChange={() => {}} readOnly />
               </div>
+            ) : (
+              // No form published, and this viewer cannot publish one.
+              <p className="text-sm text-gray-500">
+                No registration form has been published for this competition yet.
+              </p>
             )}
           </Card>
 
