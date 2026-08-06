@@ -47,10 +47,13 @@ public abstract class AbstractIntegrationTest {
 
     protected ApiClient api;
 
-    /** Seeded roles and permissions survive; everything a test creates does not. */
+    /** Seeded roles, permissions and sports survive; everything a test creates does not. */
     @BeforeEach
     void resetState() {
-        jdbcTemplate.execute("truncate user_role_assignment, refresh_token, app_user, organization_unit cascade");
+        jdbcTemplate.execute("""
+            truncate competition, tournament, sport_configuration, venue,
+                     user_role_assignment, refresh_token, app_user, organization_unit cascade
+            """);
         api = new ApiClient(mockMvc, objectMapper);
     }
 }

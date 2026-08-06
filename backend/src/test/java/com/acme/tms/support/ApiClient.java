@@ -34,6 +34,10 @@ public class ApiClient {
         return exchange(MockMvcRequestBuilders.patch(path).content(json(body)), accessToken);
     }
 
+    public Response put(String path, Object body, String accessToken) {
+        return exchange(MockMvcRequestBuilders.put(path).content(json(body)), accessToken);
+    }
+
     public Response delete(String path, String accessToken) {
         return exchange(MockMvcRequestBuilders.delete(path), accessToken);
     }

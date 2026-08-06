@@ -46,6 +46,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/info", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/api/v1/health").permitAll()
+                // Public tournament pages need no token. The service still hides anything that is
+                // not yet published, so DRAFT slugs cannot be discovered here.
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/invite-accept", "/api/v1/auth/register").permitAll()
                 .anyRequest().authenticated()
