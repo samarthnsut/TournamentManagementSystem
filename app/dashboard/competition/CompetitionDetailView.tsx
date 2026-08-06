@@ -596,17 +596,17 @@ export default function CompetitionDetailView({
                           type="button"
                           onClick={() => approve.mutate(registration.id)}
                           disabled={approve.isPending}
-                          className="text-sm font-medium text-green-300 transition hover:text-green-200 disabled:opacity-50"
+                          className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-300 transition hover:border-green-400 hover:bg-green-500/20 hover:text-green-200 focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Approve
+                          {approve.isPending ? 'Approving…' : 'Approve'}
                         </button>
                         <button
                           type="button"
                           onClick={() => reject.mutate(registration.id)}
                           disabled={reject.isPending}
-                          className="text-sm font-medium text-red-300 transition hover:text-red-200 disabled:opacity-50"
+                          className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:border-red-400 hover:bg-red-500/20 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Reject
+                          {reject.isPending ? 'Rejecting…' : 'Reject'}
                         </button>
                         </>
                         ) : null}
@@ -614,9 +614,9 @@ export default function CompetitionDetailView({
                           type="button"
                           onClick={() => withdraw.mutate(registration.id)}
                           disabled={withdraw.isPending}
-                          className="text-sm text-gray-500 transition hover:text-gray-300 disabled:opacity-50"
+                          className="rounded-lg border border-dark-border px-4 py-2 text-sm font-medium text-gray-400 transition hover:border-gray-600 hover:bg-white/5 hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Withdraw
+                          {withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
                         </button>
                       </div>
                     ) : null}
