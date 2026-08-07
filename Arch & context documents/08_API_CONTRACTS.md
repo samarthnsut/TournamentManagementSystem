@@ -897,6 +897,10 @@ Errors: `404 TOURNAMENT_NOT_FOUND` (unknown or `DRAFT` slug), `404 COMPETITION_N
 
 Returns an S3 presigned PUT URL. Client uploads directly, then calls attach.
 
+The permission is evaluated at ORGANIZATION scope against the unit that owns the *target entity*, resolved from `entityType`/`entityId` — never against anything the caller sent. The check therefore happens in `DocumentService` rather than in a `@RequiresPermission` annotation, which cannot express a scope that is only known after a polymorphic lookup.
+
+`entityType` is limited to the types some module has deployed an `AttachableEntityResolver` for (`TOURNAMENT`, `REGISTRATION` today); anything else is `400 ENTITY_TYPE_NOT_ATTACHABLE`. The object key is composed by the server and namespaced by organization unit — a client-supplied key would be a path traversal, and would let one tenant overwrite another's object.
+
 Request:
 ```json
 { "fileName": "age-proof-aman-malik.pdf", "mimeType": "application/pdf", "sizeBytes": 482133, "entityType": "REGISTRATION", "entityId": "01907e2a-9999-7abc-9def-000000000501" }
@@ -916,6 +920,10 @@ Errors: `400` (mimeType not in allowlist: pdf/jpeg/png; sizeBytes > 10485760), `
 ### 14.2 `POST /api/v1/documents/{uploadId}/attach` — `document:upload`
 
 Confirms upload; server verifies object exists (HEAD) and persists `Document`.
+
+The HEAD is not just an existence check. A presigned PUT signs the content type but **not the length**, so a caller who declared 400 KB at init can still push far more; the size and type recorded are the ones read back off the stored object, and an object that breaks either rule is deleted rather than attached (`400 FILE_TOO_LARGE` / `400 MIME_TYPE_NOT_ALLOWED`). The permission is re-checked here too — authority can be revoked between the two calls.
+
+Nothing about the attachment is taken from this request: the owning entity, file name, and key all come from the `document_upload` row the server wrote at init. `uploadId` says only "the upload you authorized is done".
 
 Success `201`:
 ```json
@@ -937,7 +945,7 @@ Errors: `404 UPLOAD_NOT_FOUND`, `409 UPLOAD_NOT_COMPLETED` (object missing in S3
 
 ### 14.3 `GET /api/v1/documents?entityType=REGISTRATION&entityId=...` — `document:read`
 
-`200`: paginated list; each item includes a short-lived presigned GET `downloadUrl`. Errors: `403` (entity outside scope).
+`200`: list; each item includes a short-lived presigned GET `downloadUrl` (5 min), signed with a `Content-Disposition: attachment` so a PDF is downloaded rather than rendered inline under our own origin. `fileUrl` is the durable object key; `downloadUrl` expires and is never persisted. Errors: `403` (entity outside scope), `400 ENTITY_TYPE_NOT_ATTACHABLE`, `404 ENTITY_NOT_FOUND`.
 
 ---
 

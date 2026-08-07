@@ -225,8 +225,8 @@ gantt
 **Goal:** File uploads via presigned URLs, immutable audit trail on all mutations, and a security/performance hardening pass before launch prep.
 
 **Deliverables**
-- [x] Migrations: `audit_log` (V12). `document` still to come
-- [ ] `Document` module: presigned S3 upload/download, `{ organizationUnitId, entityType, entityId, fileName, fileUrl, mimeType, sizeBytes, uploadedBy }`; mime/size allow-list; attach to Registration and Tournament
+- [x] Migrations: `audit_log` (V12), `document` + `document_upload` (V13)
+- [x] `Document` module: presigned S3 upload/download, `{ organizationUnitId, entityType, entityId, fileName, fileUrl, mimeType, sizeBytes, uploadedBy }`; mime/size allow-list enforced at init *and* re-checked against the stored object at attach; attach to Registration and Tournament. Proved against MinIO in Testcontainers, not a mock
 - [x] `AuditLog` AOP interceptor at service layer: `actorId, action, entityType, entityId, beforeState/afterState (JSONB), organizationUnitId, ipAddress, timestamp`; read API for TENANT_ADMIN (scoped). Coverage enforced by `AuditCoverageTest`; deviations from the doc-04 table spec in ADR-017
 - [ ] Hardening: rate limiting on auth + public endpoints (Redis), request-size limits, security headers, dependency + container scan in CI, secrets audit
 - [ ] Performance pass: N+1 sweep (Hibernate statistics in tests), indexes verified against 04, p95 targets measured with a k6/Gatling smoke on seed data

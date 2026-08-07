@@ -140,8 +140,16 @@ a nested `@Transactional` call marks the caller's transaction rollback-only *bef
 catch it, taking down the operation being recorded — and it **must not read the caller or filter by
 permission**, or the same action recorded by two actors produces two different histories.
 
-Still to come in Sprint 7: the `document` module (S3/MinIO presigned upload), rate limiting,
-security headers, and the dependency/container scans.
+The **document module** is built too: two-phase presigned upload (08 §14), MinIO locally via
+`docker compose`, real S3 in production — only `app.storage.endpoint` differs. Bytes never pass
+through the app. Two rules it enforces that are easy to lose: the object key is composed by the
+server and namespaced by organization unit (a client-supplied key is a path traversal), and the
+mime/size allow-list is re-checked against the *stored object* at attach, because a presigned PUT
+signs the content type but not the length. `AttachableEntityResolver` is both the owner lookup and
+the allow-list of what a file may hang off.
+
+Still to come in Sprint 7: rate limiting, request-size limits, security headers, and the
+dependency/container scans.
 
 ### Docs that describe intent, not the code
 

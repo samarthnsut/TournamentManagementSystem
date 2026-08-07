@@ -20,6 +20,10 @@ configurations {
 }
 
 dependencies {
+    // Presigned upload/download for the document module. The BOM keeps the s3 and presigner
+    // artifacts on one version.
+    implementation platform('software.amazon.awssdk:bom:2.25.60')
+    implementation 'software.amazon.awssdk:s3'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -40,6 +44,8 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
+    // The DoD asks for the presigned flow proved against MinIO, not against a mock.
+    testImplementation 'org.testcontainers:minio'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
