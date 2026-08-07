@@ -148,6 +148,15 @@ mime/size allow-list is re-checked against the *stored object* at attach, becaus
 signs the content type but not the length. `AttachableEntityResolver` is both the owner lookup and
 the allow-list of what a file may hang off.
 
+Every backend module now has a screen. `/dashboard/settings/*` holds people & roles, venues, sport
+configurations and approval workflows; `/dashboard/audit` is the trail viewer; `DocumentPanel` is a
+drop-in attachment list mounted on the tournament page. Two backend gaps had to be closed first —
+venues had a table and an entity but no controller *and* no permissions in the catalog (V14 seeds
+`venue:*`), and there was no way to list users, only to invite one.
+
+`ScopeType.VENUE` joins `MATCH` as a resolve-only scope (ADR-015): the endpoint is addressed by
+venue id, the authority comes from the owning unit, and the role tables still refuse both as grants.
+
 Still to come in Sprint 7: rate limiting, request-size limits, security headers, and the
 dependency/container scans.
 

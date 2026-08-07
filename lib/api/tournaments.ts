@@ -219,3 +219,11 @@ export function getPublicTournament(slug: string) {
     competitions: Array<{ id: string; name: string; sportCode: string | null; status: CompetitionStatus }>
   }>(`/public/t/${slug}`, { auth: false })
 }
+
+/** Replaces the whole config document — the API takes no patch (06 §6: full-document override). */
+export function replaceSportConfiguration(id: string, config: Record<string, unknown>) {
+  return request<SportConfiguration>(`/sport-configurations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}

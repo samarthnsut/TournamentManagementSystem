@@ -11,5 +11,9 @@ public enum ScopeType {
      * act on one is inherited from its competition. The role tables deliberately do not accept it,
      * so resolving through {@code MatchScopeResolver} is the only way it can be satisfied.
      */
-    MATCH
+    MATCH,
+
+    /** Target only, same pattern as {@link #MATCH} (ADR-015): addressed by venue id, governed by
+     * the organization unit that owns the venue. */
+    VENUE
 }

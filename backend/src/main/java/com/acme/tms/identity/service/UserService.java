@@ -8,7 +8,10 @@ import com.acme.tms.identity.domain.User;
 import com.acme.tms.identity.domain.UserStatus;
 import com.acme.tms.identity.dto.InviteUserRequest;
 import com.acme.tms.identity.dto.InviteUserResponse;
+import com.acme.tms.identity.dto.UserListItemResponse;
 import com.acme.tms.identity.repository.UserRepository;
+import com.acme.tms.common.security.CurrentUser;
+import com.acme.tms.common.security.ScopeEvaluator;
 import com.acme.tms.organization.service.OrganizationUnitService;
 
 import org.springframework.stereotype.Service;
@@ -16,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -24,15 +29,45 @@ public class UserService {
     private final UserRepository userRepository;
     private final OrganizationUnitService organizationUnitService;
     private final RoleAssignmentService roleAssignmentService;
+    private final ScopeEvaluator scopeEvaluator;
+    private final CurrentUser currentUser;
 
     public UserService(
         UserRepository userRepository,
         OrganizationUnitService organizationUnitService,
-        RoleAssignmentService roleAssignmentService
+        RoleAssignmentService roleAssignmentService,
+        ScopeEvaluator scopeEvaluator,
+        CurrentUser currentUser
     ) {
         this.userRepository = userRepository;
         this.organizationUnitService = organizationUnitService;
         this.roleAssignmentService = roleAssignmentService;
+        this.scopeEvaluator = scopeEvaluator;
+        this.currentUser = currentUser;
+    }
+
+    /**
+     * The directory a role-management screen lists. Scoped to the units the caller can reach with
+     * {@code user:read} — an unscoped user list would enumerate every tenant on the platform.
+     */
+    @Transactional(readOnly = true)
+    public List<UserListItemResponse> list() {
+        List<UUID> visibleUnits =
+            scopeEvaluator.visibleOrganizationUnitIds(currentUser.requireUserId(), "user:read");
+
+        if (visibleUnits.isEmpty()) {
+            return List.of();
+        }
+
+        return userRepository.findInOrganizationUnits(visibleUnits).stream()
+            .map(user -> new UserListItemResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getStatus(),
+                user.getCreatedAt(),
+                roleAssignmentService.list(user.getId())))
+            .toList();
     }
 
     @Transactional

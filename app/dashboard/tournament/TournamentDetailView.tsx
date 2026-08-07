@@ -9,6 +9,7 @@ import Card from '../../../components/ui/Card'
 import Input from '../../../components/ui/Input'
 import StatusBadge from '../../../components/ui/StatusBadge'
 import Select from '../../../components/ui/Select'
+import DocumentPanel from '../../../components/documents/DocumentPanel'
 import { useAuth } from '../../../lib/useAuth'
 import { buildConfigFor, hasPresetFor } from '../../../lib/sportPresets'
 import {
@@ -455,6 +456,13 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
               </form>
             </Card>
           ) : null}
+
+          {/* Rulebooks, sanction letters and schedules hang off the tournament itself. */}
+          <DocumentPanel
+            entityType="TOURNAMENT"
+            entityId={tournamentId}
+            description="Rulebooks, sanction letters, schedules. PDF, JPEG or PNG, up to 10 MB each."
+          />
         </div>
       </main>
     </>
