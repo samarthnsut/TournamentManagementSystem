@@ -1,5 +1,6 @@
 package com.acme.tms.workflow.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ValidationException;
 import com.acme.tms.common.security.CurrentUser;
@@ -43,6 +44,7 @@ public class ApprovalWorkflowService {
     }
 
     @Transactional
+    @Audited(value = "workflow:create", entityType = "ApprovalWorkflow")
     public WorkflowResponse create(CreateWorkflowRequest request) {
         validateSteps(request.steps());
 
@@ -96,6 +98,7 @@ public class ApprovalWorkflowService {
      * chain, and a decision trail that references a vanished workflow is worse than useless.
      */
     @Transactional
+    @Audited(value = "workflow:deactivate", entityType = "ApprovalWorkflow", entityIdParam = "id")
     public void deactivate(UUID id) {
         require(id).setActive(false);
     }

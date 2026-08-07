@@ -14,6 +14,8 @@ import java.util.UUID;
 public record MatchResponse(
     UUID id,
     UUID competitionId,
+    /** Denormalized from the competition: doc 08 §1.6, and the audit trail needs an owning tenant. */
+    UUID organizationUnitId,
     UUID fixtureId,
     Integer round,
     MatchStatus status,

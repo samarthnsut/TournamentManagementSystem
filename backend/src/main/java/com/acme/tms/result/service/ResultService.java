@@ -1,5 +1,6 @@
 package com.acme.tms.result.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ValidationException;
 import com.acme.tms.common.security.CurrentUser;
@@ -76,6 +77,7 @@ public class ResultService {
     }
 
     @Transactional
+    @Audited(value = "result:record", entityType = "Match", entityIdParam = "matchId")
     public RecordResultResponse record(UUID matchId, RecordResultRequest request) {
         Match match = matchService.require(matchId);
 

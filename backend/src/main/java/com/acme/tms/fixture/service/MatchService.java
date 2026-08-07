@@ -1,5 +1,6 @@
 package com.acme.tms.fixture.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ValidationException;
@@ -57,6 +58,7 @@ public class MatchService {
     }
 
     @Transactional
+    @Audited(value = "match:schedule", entityType = "Match", entityIdParam = "matchId")
     public ScheduledMatchResponse schedule(UUID matchId, ScheduleMatchRequest request) {
         Match match = require(matchId);
 
@@ -90,6 +92,7 @@ public class MatchService {
     }
 
     @Transactional
+    @Audited(value = "match:transition", entityType = "Match", entityIdParam = "matchId")
     public MatchResponse transition(UUID matchId, MatchStatus target) {
         Match match = require(matchId);
 

@@ -1,5 +1,6 @@
 package com.acme.tms.registration.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
@@ -71,11 +72,13 @@ public class RegistrationApprovalService {
     }
 
     @Transactional
+    @Audited(value = "registration:approve", entityType = "Registration", entityIdParam = "registrationId")
     public ApprovalInstanceResponse approve(UUID registrationId, String comment) {
         return decide(registrationId, ApprovalDecision.APPROVE, comment);
     }
 
     @Transactional
+    @Audited(value = "registration:reject", entityType = "Registration", entityIdParam = "registrationId")
     public ApprovalInstanceResponse reject(UUID registrationId, String comment) {
         return decide(registrationId, ApprovalDecision.REJECT, comment);
     }

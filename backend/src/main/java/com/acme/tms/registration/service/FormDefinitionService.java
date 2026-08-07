@@ -1,5 +1,6 @@
 package com.acme.tms.registration.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ValidationException;
@@ -53,6 +54,7 @@ public class FormDefinitionService {
 
     /** Publishes the next version and retires the current one (BR-RFD-1). */
     @Transactional
+    @Audited(value = "form:publish", entityType = "Competition", entityIdParam = "competitionId")
     public FormDefinitionResponse publish(UUID competitionId, JsonNode schema) {
         Competition competition = competitionService.require(competitionId);
         requireSchemaIsUsable(schema);
@@ -83,6 +85,7 @@ public class FormDefinitionService {
      * points here, changing the schema would rewrite the meaning of a submitted answer (BR-RFD-2).
      */
     @Transactional
+    @Audited(value = "form:replace-schema", entityType = "RegistrationFormDefinition", entityIdParam = "formDefinitionId")
     public FormDefinitionResponse replaceSchema(UUID formDefinitionId, JsonNode schema) {
         RegistrationFormDefinition definition = require(formDefinitionId);
         requireSchemaIsUsable(schema);

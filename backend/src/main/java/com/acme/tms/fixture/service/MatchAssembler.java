@@ -13,6 +13,7 @@ import com.acme.tms.result.dto.ResultSummaryResponse;
 import com.acme.tms.result.repository.ResultRepository;
 import com.acme.tms.result.service.ResultPayload;
 import com.acme.tms.result.service.ResultPayloadCodec;
+import com.acme.tms.tournament.repository.CompetitionRepository;
 
 import org.springframework.stereotype.Component;
 
@@ -40,6 +41,7 @@ public class MatchAssembler {
     private final ParticipantRepository participantRepository;
     private final ResultRepository resultRepository;
     private final FixtureRepository fixtureRepository;
+    private final CompetitionRepository competitionRepository;
     private final ResultPayloadCodec resultPayloadCodec;
 
     public MatchAssembler(
@@ -47,12 +49,14 @@ public class MatchAssembler {
         ParticipantRepository participantRepository,
         ResultRepository resultRepository,
         FixtureRepository fixtureRepository,
+        CompetitionRepository competitionRepository,
         ResultPayloadCodec resultPayloadCodec
     ) {
         this.matchParticipantRepository = matchParticipantRepository;
         this.participantRepository = participantRepository;
         this.resultRepository = resultRepository;
         this.fixtureRepository = fixtureRepository;
+        this.competitionRepository = competitionRepository;
         this.resultPayloadCodec = resultPayloadCodec;
     }
 
@@ -84,6 +88,7 @@ public class MatchAssembler {
 
         Map<UUID, String> names = displayNames(participantIds);
         Map<UUID, Integer> roundsByFixture = roundNumbers(matches);
+        Map<UUID, UUID> owningUnits = owningUnits(matches);
 
         List<MatchResponse> responses = new ArrayList<>(matches.size());
         for (Match match : matches) {
@@ -95,6 +100,7 @@ public class MatchAssembler {
             responses.add(new MatchResponse(
                 match.getId(),
                 match.getCompetitionId(),
+                owningUnits.get(match.getCompetitionId()),
                 match.getFixtureId(),
                 roundsByFixture.get(match.getFixtureId()),
                 match.getStatus(),
@@ -151,6 +157,20 @@ public class MatchAssembler {
         participantRepository.findAllById(participantIds)
             .forEach(participant -> names.put(participant.getId(), participant.getDisplayName()));
         return names;
+    }
+
+    /** One lookup per competition, however many matches — the batching rule this class exists for. */
+    private Map<UUID, UUID> owningUnits(List<Match> matches) {
+        Set<UUID> competitionIds = new HashSet<>();
+        matches.forEach(match -> competitionIds.add(match.getCompetitionId()));
+        if (competitionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, UUID> units = new HashMap<>();
+        competitionRepository.findAllById(competitionIds)
+            .forEach(competition -> units.put(competition.getId(), competition.getOrganizationUnitId()));
+        return units;
     }
 
     private Map<UUID, Integer> roundNumbers(List<Match> matches) {

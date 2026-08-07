@@ -1,5 +1,6 @@
 package com.acme.tms.tournament.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.domain.ParticipantType;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
@@ -57,6 +58,7 @@ public class CompetitionService {
     }
 
     @Transactional
+    @Audited(value = "competition:create", entityType = "Competition")
     public CompetitionResponse create(UUID tournamentId, CreateCompetitionRequest request) {
         Tournament tournament = tournamentService.require(tournamentId);
         if (CLOSED_TO_NEW_COMPETITIONS.contains(tournament.getStatus())) {
@@ -110,6 +112,7 @@ public class CompetitionService {
     }
 
     @Transactional
+    @Audited(value = "competition:update", entityType = "Competition", entityIdParam = "id")
     public CompetitionResponse update(UUID id, UpdateCompetitionRequest request) {
         Competition competition = require(id);
         if (competition.getStatus().isTerminal()) {
@@ -136,6 +139,7 @@ public class CompetitionService {
     }
 
     @Transactional
+    @Audited(value = "competition:transition", entityType = "Competition", entityIdParam = "id")
     public TransitionResponse transition(UUID id, CompetitionStatus target) {
         Competition competition = require(id);
         CompetitionStatus current = competition.getStatus();

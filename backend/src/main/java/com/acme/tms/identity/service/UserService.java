@@ -1,5 +1,6 @@
 package com.acme.tms.identity.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.util.RandomTokenGenerator;
 import com.acme.tms.common.util.Sha256;
@@ -35,6 +36,7 @@ public class UserService {
     }
 
     @Transactional
+    @Audited(value = "user:invite", entityType = "User")
     public InviteUserResponse invite(InviteUserRequest request) {
         organizationUnitService.findActiveUnit(request.organizationUnitId());
 

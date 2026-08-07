@@ -1,5 +1,6 @@
 package com.acme.tms.identity.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
@@ -52,6 +53,7 @@ public class RoleAssignmentService {
     }
 
     @Transactional
+    @Audited(value = "role:assign", entityType = "User", entityIdParam = "userId")
     public RoleAssignmentResponse assign(UUID userId, CreateRoleAssignmentRequest request) {
         requireGrantAuthority(request.scopeType(), request.scopeId());
         return grant(userId, request.roleCode(), request.scopeType(), request.scopeId());
@@ -62,6 +64,7 @@ public class RoleAssignmentService {
      * has no caller at all (tenant bootstrap).
      */
     @Transactional
+    @Audited(value = "role:grant", entityType = "User", entityIdParam = "userId")
     public RoleAssignmentResponse grant(UUID userId, String roleCode, ScopeType scopeType, UUID scopeId) {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("USER_NOT_FOUND", "User not found.");
@@ -108,6 +111,7 @@ public class RoleAssignmentService {
     }
 
     @Transactional
+    @Audited(value = "role:revoke", entityType = "User", entityIdParam = "userId")
     public void revoke(UUID userId, UUID assignmentId) {
         UserRoleAssignment assignment = userRoleAssignmentRepository.findByIdAndDeletedAtIsNull(assignmentId)
             .filter(candidate -> candidate.getUserId().equals(userId))

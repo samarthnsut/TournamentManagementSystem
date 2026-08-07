@@ -127,6 +127,22 @@ Leaderboards are materialized in `leaderboard_entry` and rewritten wholesale on 
 Redis read-through in doc 03 is not built and is not needed for correctness. `ScopeType.MATCH` is a
 resolve-only scope (ADR-015) — never grant it.
 
+Sprint 7 is under way. The **audit trail is built**: `@Audited` on a mutating service method (the
+annotation lives in `common/audit` so no module depends on `audit`), an AOP aspect that writes a
+row inside the caller's transaction, and per-module `AuditSnapshotProvider`s supplying the
+before/after state. `AuditCoverageTest` fails the build if a mutating service method is neither
+annotated nor on a short, justified exemption list — so a new mutation cannot silently escape the
+trail.
+
+Two rules about snapshot providers that are easy to get wrong and are enforced by nothing but
+review, so read them before writing one (ADR-017): a provider **must not throw** — an exception from
+a nested `@Transactional` call marks the caller's transaction rollback-only *before* the aspect can
+catch it, taking down the operation being recorded — and it **must not read the caller or filter by
+permission**, or the same action recorded by two actors produces two different histories.
+
+Still to come in Sprint 7: the `document` module (S3/MinIO presigned upload), rate limiting,
+security headers, and the dependency/container scans.
+
 ### Docs that describe intent, not the code
 
 `13_CODING_STANDARDS.md` is partly aspirational. The code does **not** currently use Lombok,

@@ -1,5 +1,6 @@
 package com.acme.tms.tournament.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.domain.RegistrationApprovalPolicy;
@@ -51,6 +52,7 @@ public class TournamentService {
     }
 
     @Transactional
+    @Audited(value = "tournament:create", entityType = "Tournament")
     public TournamentResponse create(CreateTournamentRequest request) {
         validateDates(request.startDate(), request.endDate());
 
@@ -89,6 +91,7 @@ public class TournamentService {
     }
 
     @Transactional
+    @Audited(value = "tournament:update", entityType = "Tournament", entityIdParam = "id")
     public TournamentResponse update(UUID id, UpdateTournamentRequest request) {
         Tournament tournament = require(id);
         if (tournament.getStatus().isTerminal()) {
@@ -143,6 +146,7 @@ public class TournamentService {
 
     /** Soft delete, permitted only while nothing downstream can depend on it. */
     @Transactional
+    @Audited(value = "tournament:delete", entityType = "Tournament", entityIdParam = "id")
     public void delete(UUID id) {
         Tournament tournament = require(id);
         if (tournament.getStatus() != TournamentStatus.DRAFT) {
@@ -152,6 +156,7 @@ public class TournamentService {
     }
 
     @Transactional
+    @Audited(value = "tournament:transition", entityType = "Tournament", entityIdParam = "id")
     public TransitionResponse transition(UUID id, TournamentStatus target) {
         Tournament tournament = require(id);
         TournamentStatus current = tournament.getStatus();

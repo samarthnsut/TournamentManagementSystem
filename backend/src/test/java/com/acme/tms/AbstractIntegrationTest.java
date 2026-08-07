@@ -51,7 +51,7 @@ public abstract class AbstractIntegrationTest {
     @BeforeEach
     void resetState() {
         jdbcTemplate.execute("""
-            truncate leaderboard_entry, result, match_participant, match, fixture,
+            truncate audit_log, leaderboard_entry, result, match_participant, match, fixture,
                      approval_action, approval_instance, approval_step, approval_workflow,
                      registration_response, registration, registration_form_definition,
                      team_member, participant,

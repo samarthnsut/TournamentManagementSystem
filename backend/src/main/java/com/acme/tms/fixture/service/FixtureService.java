@@ -1,5 +1,6 @@
 package com.acme.tms.fixture.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.fixture.domain.Fixture;
@@ -91,6 +92,7 @@ public class FixtureService {
     }
 
     @Transactional
+    @Audited(value = "fixture:generate", entityType = "Competition", entityIdParam = "competitionId")
     public FixtureSetResponse generate(UUID competitionId, GenerateFixturesRequest request) {
         Competition competition = competitionService.require(competitionId);
 
@@ -114,6 +116,7 @@ public class FixtureService {
     }
 
     @Transactional
+    @Audited(value = "fixture:regenerate", entityType = "Competition", entityIdParam = "competitionId")
     public FixtureSetResponse regenerate(UUID competitionId, RegenerateFixturesRequest request) {
         Competition competition = competitionService.require(competitionId);
 

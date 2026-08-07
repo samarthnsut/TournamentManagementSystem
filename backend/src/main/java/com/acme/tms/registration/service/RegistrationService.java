@@ -1,5 +1,6 @@
 package com.acme.tms.registration.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.domain.ParticipantType;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
@@ -96,6 +97,7 @@ public class RegistrationService {
     }
 
     @Transactional
+    @Audited(value = "registration:submit", entityType = "Registration")
     public RegistrationResponseDto submit(SubmitRegistrationRequest request) {
         Competition competition = competitionService.require(request.competitionId());
 
@@ -187,6 +189,7 @@ public class RegistrationService {
     }
 
     @Transactional
+    @Audited(value = "registration:withdraw", entityType = "Registration", entityIdParam = "registrationId")
     public RegistrationResponseDto withdraw(UUID registrationId) {
         Registration registration = requireVisible(registrationId, "registration:update");
 

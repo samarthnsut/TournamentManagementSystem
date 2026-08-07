@@ -30,8 +30,9 @@ ADR log for the Tournament Management Platform. Format per ADR: Context / Decisi
 | ADR-014 | Audit via AOP interceptor writing JSONB before/after | Accepted |
 | ADR-015 | MATCH as a resolve-only scope type | Accepted |
 | ADR-016 | Sport-neutral leaderboard metric names | Accepted |
+| ADR-017 | Unpartitioned audit_log, and snapshot providers that cannot throw | Accepted |
 
-Decision clusters worth reading together: tenancy (002, 003, 009), domain shape (004, 005, 006, 007, 008), platform plumbing (001, 011, 012, 013, 014), fixtures and results (008, 015, 016).
+Decision clusters worth reading together: tenancy (002, 003, 009), domain shape (004, 005, 006, 007, 008), platform plumbing (001, 011, 012, 013, 014), fixtures and results (008, 015, 016), audit (014, 017).
 
 ---
 
@@ -291,5 +292,26 @@ Decision clusters worth reading together: tenancy (002, 003, 009), domain shape 
 - *Emit both neutral and aliased keys:* doubles the payload and leaves clients guessing which is canonical.
 
 **Consequences.** `metrics` is strategy-shaped and clients render what they are given rather than assuming a sport, which is what lets `LOWEST_TIME` (`bestValue`, `unit`, `attempts`) and `POINTS_TABLE` share one response type. Doc 08 §13.1's example payload is superseded by this ADR. An unrecognized tiebreaker name ranks nobody rather than throwing, so a typo in a tenant's config cannot take a live standings page down mid-tournament.
+
+**Status.** Accepted — 2026-08-07.
+
+---
+
+## ADR-017 — Unpartitioned `audit_log`, and snapshot providers that cannot throw
+
+**Context.** ADR-014 fixed the mechanism (service-layer AOP, JSONB before/after). Building it surfaced two things that document 04's table spec and the ADR's sketch did not settle.
+
+**Decision.**
+
+*The table is not partitioned in V1.* Doc 04 describes `audit_log` as partitioned with a composite `(id, timestamp)` primary key. ADR-014's own consequences already defer time-based partitioning and archival to doc 11, and a partitioned table with no partition-maintenance job is worse than an unpartitioned one: inserts begin failing the moment the clock passes the last declared partition, and the first symptom is a business operation rolling back. The primary key is therefore plain `id`; partitioning arrives in the same migration that introduces the job that maintains it. `ip_address` is `varchar(45)` rather than `inet` for a smaller reason — nothing in V1 queries by subnet, and `inet` needs a custom Hibernate type to bind from a String.
+
+*An `AuditSnapshotProvider` must not throw, must not read the caller, and must not filter by permission.* Two failure modes forced this, both found by tests rather than by reasoning:
+
+- A `ResourceNotFoundException` raised inside a nested `@Transactional` service method marks the caller's transaction **rollback-only before the audit aspect can catch it**. The aspect's defensive `try/catch` looks like it makes snapshot failures harmless; it does not. A provider that throws takes down the very operation it was recording. Providers therefore check existence against a repository first and only then call a read that can no longer throw.
+- The first draft of the User provider reused `RoleAssignmentService.list`, which filters by the caller's own permissions. That would have made the recorded history depend on **who triggered it** — the same grant, recorded twice, producing two different snapshots. A snapshot describes the row, never the reader.
+
+**Alternatives considered.** *Running snapshots in `REQUIRES_NEW`* would isolate failures, but the "after" snapshot must see the caller's uncommitted changes, so a separate transaction cannot read the state being audited. *Serializing the method's own return value* instead of a provider snapshot avoids the loading problem, but records what the API happened to return rather than the entity's state, and would have put a raw invite token into an append-only table.
+
+**Consequences.** Audit rows are transactional with the mutation they describe, and a provider bug can no longer roll one back. The constraint on providers is a real one that a future implementer will not infer, so it is stated on the port itself. `audit_log` growth remains tracked in doc 11; the read path is indexed for the two queries that exist (subtree-by-time, entity history). Coverage is enforced by `AuditCoverageTest`, which fails the build when a mutating service method is neither annotated nor explicitly exempt — the exemption list is small, and a second test fails if an entry on it stops naming a real method.
 
 **Status.** Accepted — 2026-08-07.

@@ -1,5 +1,6 @@
 package com.acme.tms.tournament.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.security.CurrentUser;
@@ -54,6 +55,7 @@ public class SportConfigurationService {
     }
 
     @Transactional
+    @Audited(value = "sport-config:create", entityType = "SportConfiguration")
     public SportConfigurationResponse create(CreateSportConfigurationRequest request) {
         sportRepository.findByIdAndDeletedAtIsNull(request.sportId())
             .orElseThrow(() -> new ResourceNotFoundException("SPORT_NOT_FOUND", "Sport not found."));
@@ -95,6 +97,7 @@ public class SportConfigurationService {
 
     /** Full replace. Refused once a competition depends on it, since strategies would shift underfoot. */
     @Transactional
+    @Audited(value = "sport-config:replace", entityType = "SportConfiguration", entityIdParam = "id")
     public SportConfigurationResponse replace(UUID id, JsonNode config) {
         SportConfiguration configuration = require(id);
 

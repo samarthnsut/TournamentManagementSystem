@@ -1,5 +1,6 @@
 package com.acme.tms.organization.service;
 
+import com.acme.tms.common.audit.Audited;
 import com.acme.tms.common.exception.ConflictException;
 import com.acme.tms.common.exception.ResourceNotFoundException;
 import com.acme.tms.common.exception.ScopeAccessDeniedException;
@@ -45,6 +46,7 @@ public class OrganizationUnitService {
      * on the parent subtree, while a new root (a whole new tenant) is a global-only act.
      */
     @Transactional
+    @Audited(value = "organization:create", entityType = "OrganizationUnit")
     public OrganizationUnitResponse createScoped(CreateOrganizationUnitRequest request) {
         ScopeTarget target = request.parentOrganizationUnitId() == null
             ? ScopeTarget.global()
@@ -76,6 +78,7 @@ public class OrganizationUnitService {
     }
 
     @Transactional
+    @Audited(value = "organization:create-root", entityType = "OrganizationUnit")
     public OrganizationUnitResponse create(CreateOrganizationUnitRequest request) {
         if (request.parentOrganizationUnitId() != null) {
             OrganizationUnit parent = findActiveUnit(request.parentOrganizationUnitId());
@@ -114,6 +117,7 @@ public class OrganizationUnitService {
     }
 
     @Transactional
+    @Audited(value = "organization:update", entityType = "OrganizationUnit", entityIdParam = "id")
     public OrganizationUnitResponse update(UUID id, UpdateOrganizationUnitRequest request) {
         OrganizationUnit organizationUnit = findActiveUnit(id);
         if (organizationUnit.getStatus() == OrganizationUnitStatus.ARCHIVED) {
@@ -134,6 +138,7 @@ public class OrganizationUnitService {
     }
 
     @Transactional
+    @Audited(value = "organization:archive", entityType = "OrganizationUnit", entityIdParam = "id")
     public void archive(UUID id) {
         OrganizationUnit organizationUnit = findActiveUnit(id);
         if (organizationUnit.getStatus() == OrganizationUnitStatus.ARCHIVED) {
