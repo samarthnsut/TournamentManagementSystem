@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Header from '../../components/Header'
 import Card from '../../components/ui/Card'
+import PublicCompetitionResults from '../../components/competition/PublicCompetitionResults'
 import { getPublicTournament, type CompetitionStatus } from '../../lib/api/tournaments'
 
 const COMPETITION_BADGE: Record<CompetitionStatus, string> = {
@@ -31,6 +33,9 @@ function formatDateRange(startDate: string | null, endDate: string | null) {
  * visitor who has never signed in — and an unpublished tournament simply reads as not found.
  */
 export default function PublicTournamentView({ slug }: { slug: string }) {
+  // Results are shown for one competition at a time: a tournament can carry a dozen, and loading
+  // every draw and board at once would make the page slower the more successful the event is.
+  const [openCompetitionId, setOpenCompetitionId] = useState<string | null>(null)
 
   const { data: tournament, isLoading, isError } = useQuery({
     queryKey: ['public-tournament', slug],
@@ -87,26 +92,50 @@ export default function PublicTournamentView({ slug }: { slug: string }) {
                   <p className="text-gray-400">Competitions have not been announced yet.</p>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {tournament.competitions.map((competition) => (
-                    <Card key={competition.id}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">{competition.name}</h3>
-                          {competition.sportCode ? (
-                            <p className="mt-1 text-sm text-gray-500">{competition.sportCode}</p>
-                          ) : null}
+                <div className="space-y-4">
+                  {tournament.competitions.map((competition) => {
+                    const isOpen = openCompetitionId === competition.id
+                    // A competition nobody has drawn yet has nothing to show, so it does not
+                    // pretend to be expandable.
+                    const hasResults =
+                      competition.status !== 'DRAFT' && competition.status !== 'OPEN'
+
+                    return (
+                      <Card key={competition.id}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">{competition.name}</h3>
+                            {competition.sportCode ? (
+                              <p className="mt-1 text-sm text-gray-500">{competition.sportCode}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
+                                COMPETITION_BADGE[competition.status]
+                              }`}
+                            >
+                              {competition.status.replace('_', ' ').toLowerCase()}
+                            </span>
+                            {hasResults ? (
+                              <button
+                                type="button"
+                                aria-expanded={isOpen}
+                                onClick={() => setOpenCompetitionId(isOpen ? null : competition.id)}
+                                className="rounded-lg border border-accent-cyan/40 bg-accent-cyan/10 px-4 py-2 text-sm font-semibold text-accent-cyan transition hover:border-accent-cyan hover:bg-accent-cyan/20 focus:outline-none focus:ring-2 focus:ring-accent-cyan/40"
+                              >
+                                {isOpen ? 'Hide results' : 'Results & fixtures'}
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                            COMPETITION_BADGE[competition.status]
-                          }`}
-                        >
-                          {competition.status.replace('_', ' ').toLowerCase()}
-                        </span>
-                      </div>
-                    </Card>
-                  ))}
+
+                        {isOpen ? (
+                          <PublicCompetitionResults slug={slug} competitionId={competition.id} />
+                        ) : null}
+                      </Card>
+                    )
+                  })}
                 </div>
               )}
             </div>
