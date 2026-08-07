@@ -38,6 +38,11 @@ const STATUS_TONES: Record<string, Tone> = {
   APPROVED: 'success',
   REJECTED: 'danger',
   WITHDRAWN: 'neutral',
+  // Match — COMPLETED and CANCELLED above already mean the right thing here.
+  SCHEDULED: 'neutral',
+  LIVE: 'primary',
+  WALKOVER: 'info',
+  POSTPONED: 'warning',
 }
 
 function humanize(status: string) {

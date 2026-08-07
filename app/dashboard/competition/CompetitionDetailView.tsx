@@ -9,6 +9,8 @@ import Card from '../../../components/ui/Card'
 import Input from '../../../components/ui/Input'
 import StatusBadge from '../../../components/ui/StatusBadge'
 import DynamicForm, { validateAnswers } from '../../../components/registration/DynamicForm'
+import FixturesPanel from '../../../components/competition/FixturesPanel'
+import LeaderboardPanel from '../../../components/competition/LeaderboardPanel'
 import FormBuilder, {
   buildSchema,
   emptyField,
@@ -625,6 +627,21 @@ export default function CompetitionDetailView({
               </div>
             )}
           </Card>
+
+          {/* Fixtures and standings only mean anything once entries are settled, so they sit
+              after the entry list — the order an organizer's day actually runs in. */}
+          {competition.status !== 'DRAFT' && competition.status !== 'OPEN' ? (
+            <>
+              <FixturesPanel
+                competition={competition}
+                canGenerate={can('fixture:generate')}
+                canRecord={can('result:record')}
+                canSchedule={can('match:schedule')}
+                onError={report}
+              />
+              <LeaderboardPanel competitionId={competitionId} />
+            </>
+          ) : null}
         </div>
       </main>
     </>

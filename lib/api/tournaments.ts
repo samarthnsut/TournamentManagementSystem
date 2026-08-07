@@ -41,6 +41,13 @@ export type Competition = {
   sportCode: string | null
   sportConfigurationId: string
   participantType: 'INDIVIDUAL' | 'TEAM' | 'ORGANIZATION' | null
+  /**
+   * The resolved strategy keys. Dispatch on these — never on `sportCode` — so a sport this UI has
+   * never heard of still gets the right controls.
+   */
+  fixtureGenerator: import('./fixtures').FixtureGeneratorKey | null
+  resultEvaluator: import('./fixtures').ResultEvaluatorKey | null
+  leaderboardStrategy: import('./fixtures').LeaderboardStrategyKey | null
   status: CompetitionStatus
   maxRegistrations: number | null
   registrationOpenAt: string | null
