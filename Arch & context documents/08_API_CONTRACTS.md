@@ -453,12 +453,19 @@ Success `201`:
   "tournamentId": "01907e2a-3333-7abc-9def-000000000100",
   "organizationUnitId": "01907e2a-2222-7abc-9def-000000000010",
   "name": "Football U16",
+  "sportId": "01907e2a-5555-7abc-9def-000000000050",
+  "sportCode": "FOOTBALL",
   "sportConfigurationId": "01907e2a-7777-7abc-9def-000000000301",
   "participantType": "TEAM",
+  "fixtureGenerator": "ROUND_ROBIN",
+  "resultEvaluator": "POINTS",
+  "leaderboardStrategy": "POINTS_TABLE",
   "status": "DRAFT",
   "maxRegistrations": 16
 }
 ```
+
+The three strategy keys are resolved from the competition's SportConfiguration and returned on every competition read. Clients need them to know what to render — a score box per side, or a time per lane — and the only alternative is counting participants and guessing, which is exactly the sport-shaped inference the engine exists to prevent. Clients dispatch on these keys, never on `sportCode`.
 
 Errors: `400` (`participantType` mismatch with SportConfiguration's `participantType`), `403`, `404 TOURNAMENT_NOT_FOUND` / `404 SPORT_CONFIGURATION_NOT_FOUND`, `409 TOURNAMENT_NOT_EDITABLE` (tournament `COMPLETED`/`CANCELLED`/`ARCHIVED`).
 
@@ -659,54 +666,80 @@ Runs the `FixtureGenerator` strategy from the competition's SportConfiguration o
 
 Request: `{ "seedStrategy": "RANDOM" }` (or `"SEEDED"` with `"seeds": [{ "participantId": "...", "seed": 1 }]`)
 
+A round-robin season produces one `Fixture` row **per round**, so the response is a list of rounds rather than the single `fixtureId` earlier drafts of this section assumed. The flat counts callers display (`rounds`, `matchCount`) sit alongside it.
+
 Success `201`:
 ```json
 {
-  "fixtureId": "01907e2a-dddd-7abc-9def-000000000901",
   "competitionId": "01907e2a-6666-7abc-9def-000000000201",
   "generatorKey": "ROUND_ROBIN",
   "rounds": 15,
   "matchCount": 120,
-  "matches": [
+  "fixtures": [
     {
-      "id": "01907e2a-eeee-7abc-9def-000000001001",
+      "fixtureId": "01907e2a-dddd-7abc-9def-000000000901",
       "round": 1,
-      "status": "SCHEDULED",
-      "participants": [
-        { "participantId": "01907e2a-aaaa-7abc-9def-000000000601", "name": "Sonipat Strikers U16" },
-        { "participantId": "01907e2a-aaaa-7abc-9def-000000000602", "name": "Panipat Panthers U16" }
+      "roundName": "Round 1",
+      "generatedAt": "2027-01-20T10:00:00Z",
+      "matches": [
+        {
+          "id": "01907e2a-eeee-7abc-9def-000000001001",
+          "round": 1,
+          "status": "SCHEDULED",
+          "version": 0,
+          "participants": [
+            { "participantId": "01907e2a-aaaa-7abc-9def-000000000601", "name": "Sonipat Strikers U16", "slot": "HOME" },
+            { "participantId": "01907e2a-aaaa-7abc-9def-000000000602", "name": "Panipat Panthers U16", "slot": "AWAY" }
+          ]
+        }
       ]
     }
   ]
 }
 ```
 
-Errors: `403`, `404`, `409 COMPETITION_NOT_CLOSED`, `409 FIXTURE_ALREADY_EXISTS` (use regenerate), `409 INSUFFICIENT_PARTICIPANTS` (< 2 approved), `400` (generator `NONE` — e.g. Athletics-100m heats are created as matches directly, not via bracket generation).
+**Generator `NONE`** is generated through this same endpoint, not rejected: it emits a direct-final shell — one round named `Final` holding one match with every entrant in a lane (`LANE_1`…`LANE_n`, seeded entrants inside). That is what doc 06 §3.2 and the Sprint 6 deliverable ("direct-final for measured events like 100m") call for, and it means result and leaderboard code never special-cases "this competition has no fixtures". Its minimum entry count is 1 — a solo time trial is a real event.
+
+Errors: `403`, `404`, `409 COMPETITION_NOT_CLOSED`, `409 FIXTURE_ALREADY_EXISTS` (use regenerate), `409 INSUFFICIENT_PARTICIPANTS` (below the generator's `minimumParticipants()` — 2 for `ROUND_ROBIN`, 1 for `NONE`).
 
 ### 11.2 `POST /api/v1/competitions/{competitionId}/fixtures/regenerate` — `fixture:generate`
 
-Discards and rebuilds. Request: `{ "confirm": true }`. Success `201` (same shape). Errors: `409 MATCHES_HAVE_RESULTS` (any match `COMPLETED` — regeneration blocked), `400` (`confirm` missing/false).
+Discards and rebuilds. Request: `{ "confirm": true }` (optionally `seedStrategy`/`seeds`). Success `201` (same shape). Errors: `409 MATCHES_HAVE_RESULTS` (any match past `SCHEDULED`/`POSTPONED` — BR-F-3, so `LIVE` blocks it too, while a postponed match does not), `404 FIXTURE_NOT_FOUND` (nothing to rebuild), `400` (`confirm` missing/false).
 
-### 11.3 `GET /api/v1/competitions/{competitionId}/fixtures` — `fixture:read` (public for published tournaments)
+### 11.3 `GET /api/v1/competitions/{competitionId}/fixtures` — `fixture:read`, COMPETITION scope
 
-`200`: fixture with paginated matches (`?round=&cursor=&limit=`). `404 FIXTURE_NOT_FOUND`.
+`200`: the same rounds-and-matches shape as 11.1. `404 FIXTURE_NOT_FOUND`.
+
+### 11.4 `GET /api/v1/competitions/{competitionId}/matches` — `match:read`
+
+`200`: every match in the competition as a flat list, each with participants and its result if one has been recorded.
 
 ---
 
 ## 12. Matches
 
-### 12.1 `POST /api/v1/matches/{matchId}/schedule` — `match:schedule`, COMPETITION scope
+Item operations are addressed flat, by match id. Authority is inherited from the match's competition through the resolve-only `MATCH` scope — see ADR-015; no MATCH-scoped role assignment exists or is accepted.
+
+### 12.1 `POST /api/v1/matches/{matchId}/schedule` — `match:schedule`, MATCH scope
 
 Request:
 ```json
 { "scheduledAt": "2027-02-03T09:30:00Z", "venueId": "01907e2a-ffff-7abc-9def-000000001101" }
 ```
 
-Success `200`: `{ "id": "01907e2a-eeee-...", "status": "SCHEDULED", "scheduledAt": "2027-02-03T09:30:00Z", "venueId": "01907e2a-ffff-..." }`.
+Success `200`: `{ "match": { … }, "warnings": [] }`. A `POSTPONED` match returns to `SCHEDULED` when rescheduled.
 
-Errors: `400` (scheduledAt outside tournament dates), `403`, `404 MATCH_NOT_FOUND` / `404 VENUE_NOT_FOUND`, `409 MATCH_FINALIZED` (`COMPLETED`/`CANCELLED`/`WALKOVER`), `409 VENUE_SLOT_CONFLICT`.
+Venue double-booking is reported in `warnings` rather than rejected (BR-M-4): organizers legitimately run two events on one ground, and refusing the booking would have them scheduling around the software.
 
-### 12.2 `POST /api/v1/matches/{matchId}/result` — `result:record`, COMPETITION scope
+Errors: `400` (missing `scheduledAt`), `403`, `404 MATCH_NOT_FOUND` / `404 VENUE_NOT_FOUND`, `409 MATCH_FINALIZED` (`COMPLETED`/`CANCELLED`/`WALKOVER`).
+
+### 12.1a Match lifecycle transitions — `match:schedule`, MATCH scope
+
+`POST /api/v1/matches/{matchId}/start` → `LIVE`, `/postpone` → `POSTPONED`, `/cancel` → `CANCELLED`. Each returns the updated match, or `409 INVALID_STATE_TRANSITION` against the lifecycle in 02 §5.12.
+
+Recording a result does **not** require passing through `LIVE` first: officials routinely score a match without ever flagging it live, and refusing the result would be the system arguing with reality. `SCHEDULED → COMPLETED` is therefore legal.
+
+### 12.2 `POST /api/v1/matches/{matchId}/result` — `result:record`, MATCH scope
 
 Payload shape is interpreted by the competition's `ResultEvaluator`. Transitions match to `COMPLETED` (or `WALKOVER`).
 
@@ -733,20 +766,37 @@ Request (Athletics-100m, `TIME`):
 }
 ```
 
+A walkover carries no scores: `{ "outcome": "WALKOVER", "winnerParticipantId": "…" }`.
+
+`version` is optional; when present it must equal the match's current version. The database's own `@Version` check is the backstop and surfaces as the same `409 STALE_VERSION`, so a client cannot tell "beaten by a millisecond" from "beaten by a minute" — and does not need to.
+
 Success `200`:
 ```json
 {
   "matchId": "01907e2a-eeee-7abc-9def-000000001001",
   "status": "COMPLETED",
-  "resultId": "01907e2a-1212-7abc-9def-000000001201",
-  "evaluatorKey": "POINTS",
-  "evaluation": { "winnerParticipantId": "01907e2a-aaaa-7abc-9def-000000000601", "pointsAwarded": { "01907e2a-aaaa-...601": 3, "01907e2a-aaaa-...602": 0 } }
+  "version": 1,
+  "result": {
+    "resultId": "01907e2a-1212-7abc-9def-000000001201",
+    "evaluatorKey": "POINTS",
+    "outcome": "COMPLETED",
+    "winnerParticipantId": "01907e2a-aaaa-7abc-9def-000000000601",
+    "recordedAt": "2027-02-03T11:15:00Z",
+    "participants": [
+      { "participantId": "01907e2a-aaaa-…601", "name": "Sonipat Strikers U16", "value": 2, "points": 3, "standing": "WIN" },
+      { "participantId": "01907e2a-aaaa-…602", "name": "Panipat Panthers U16", "value": 1, "points": 0, "standing": "LOSS" }
+    ]
+  }
 }
 ```
 
-Errors: `400` (scores don't match match participants; negative values), `403`, `404`, `409 MATCH_ALREADY_COMPLETED`, `409 STALE_VERSION` (optimistic-lock `version` mismatch — refetch and retry).
+`standing` is `WIN | DRAW | LOSS | RANKED | NO_CONTEST`. `RANKED` is placement by measurement (a race), `NO_CONTEST` an entrant who produced no result (did not start, did not finish, disqualified) — recorded rather than dropped, so the field that lined up stays visible.
 
-### 12.3 `GET /api/v1/matches/{matchId}` — `match:read` (public for published tournaments)
+Recording a result transitions the match and recomputes the leaderboard in the same transaction (BR-RES-2).
+
+Errors: `400 INVALID_RESULT` (scores don't match match participants; negative values; a time below the configured record bound; wrong unit — every problem is reported at once), `403`, `404`, `409 MATCH_ALREADY_COMPLETED`, `409 STALE_VERSION` (refetch and retry).
+
+### 12.3 `GET /api/v1/matches/{matchId}` — `match:read`, MATCH scope
 
 `200` with participants, status, scheduledAt, venue, result (if any). `404`.
 
@@ -754,9 +804,11 @@ Errors: `400` (scores don't match match participants; negative values), `403`, `
 
 ## 13. Leaderboards
 
-### 13.1 `GET /api/v1/competitions/{competitionId}/leaderboard` — `leaderboard:read` (public for published tournaments)
+### 13.1 `GET /api/v1/competitions/{competitionId}/leaderboard` — `leaderboard:read`, COMPETITION scope
 
-Computed by the competition's `LeaderboardStrategy`; served from Redis cache (invalidated on `MatchCompleted`).
+Computed by the competition's `LeaderboardStrategy` and recomputed in full on every result confirmation. The materialized `leaderboard_entry` table is the V1 cache (04 §12 decision 3): written in the same transaction as the result, so it can never serve a standing that disagrees with the match it came from. The Redis read-through layer in 03 §7 sits in front of this later and changes no contract.
+
+`metrics` is **strategy-shaped and sport-neutral** (ADR-016) — clients render what they are given rather than assuming a sport, which is what lets a points table and a timed board share one response type.
 
 Success `200` (Football, `POINTS_TABLE`):
 ```json
@@ -764,16 +816,78 @@ Success `200` (Football, `POINTS_TABLE`):
   "competitionId": "01907e2a-6666-7abc-9def-000000000201",
   "strategyKey": "POINTS_TABLE",
   "computedAt": "2027-02-05T18:00:00Z",
+  "frozen": false,
   "entries": [
-    { "rank": 1, "participantId": "01907e2a-aaaa-7abc-9def-000000000601", "name": "Sonipat Strikers U16", "played": 5, "won": 4, "drawn": 1, "lost": 0, "points": 13, "goalDifference": 9 },
-    { "rank": 2, "participantId": "01907e2a-aaaa-7abc-9def-000000000602", "name": "Panipat Panthers U16", "played": 5, "won": 4, "drawn": 0, "lost": 1, "points": 12, "goalDifference": 7 }
+    {
+      "rank": 1,
+      "participantId": "01907e2a-aaaa-7abc-9def-000000000601",
+      "name": "Sonipat Strikers U16",
+      "metrics": { "played": 5, "won": 4, "drawn": 1, "lost": 0, "points": 13, "scoreFor": 12, "scoreAgainst": 3, "scoreDifference": 9 }
+    }
   ]
 }
 ```
 
-For `LOWEST_TIME` (100m), entries carry `{ "rank", "participantId", "name", "bestValue": 11.42, "unit": "SECONDS" }`.
+For `LOWEST_TIME` (100m), `metrics` is `{ "bestValue": 11.42, "unit": "SECONDS", "attempts": 2 }` — an entrant's best time across every heat they ran.
+
+`frozen` is true once the competition is `COMPLETED`; the board stops being recomputed (BR-LE-3). Genuinely tied entrants share a rank and the next rank skips (1, 1, 3), so a reader can tell a tie from an arbitrary ordering. Entrants who have not played yet still appear, on nil.
+
+Tie-breaking follows `rules.tiebreakers` in order, defaulting to `["SCORE_DIFFERENCE", "SCORE_FOR", "HEAD_TO_HEAD"]`. `GOAL_DIFFERENCE`/`GOALS_FOR` are accepted aliases; `DIRECT_ENCOUNTER` aliases `HEAD_TO_HEAD`. An unrecognized name ranks nobody rather than throwing — a typo in a tenant's config must not take a live standings page down mid-tournament.
 
 Errors: `404 COMPETITION_NOT_FOUND`, `409 LEADERBOARD_NOT_AVAILABLE` (no completed matches yet — MVP decision: 409 with empty-state hint rather than empty 200, so clients distinguish "not started").
+
+---
+
+## 13A. Public results — anonymous
+
+Earlier drafts marked §11.3, §12.3 and §13.1 "public for published tournaments". They are not: they sit behind `@RequiresPermission` and always have. The anonymous surface is separate, lives under `/api/v1/public/**`, and is addressed **by slug**.
+
+### 13A.1 `GET /api/v1/public/t/{slug}/competitions/{competitionId}/fixtures` — anonymous
+
+### 13A.2 `GET /api/v1/public/t/{slug}/competitions/{competitionId}/leaderboard` — anonymous
+
+Both take the slug *and* the competition id, and both are checked (`PublicAccessService`): the tournament must be publicly visible (any status but `DRAFT`), and the competition must belong to **that** tournament. Addressing by competition id alone would let anyone who scraped or guessed an id read an unpublished tournament's draw, which is exactly what the slug closes off.
+
+Every failure is `404`, never `403` — a forbidden would confirm the thing exists, and an unpublished tournament's existence is itself private.
+
+The leaderboard response is byte-identical to §13.1; both paths share one read, so the public board cannot drift from the organizer's. The fixtures response is **deliberately narrower** than §11.1 — no `fixtureId`, `venueId`, `version` or `seed`, and no per-entrant `points`:
+
+```json
+{
+  "competitionId": "01907e2a-6666-7abc-9def-000000000201",
+  "competitionName": "Football U16",
+  "generatorKey": "ROUND_ROBIN",
+  "rounds": 5,
+  "matchCount": 10,
+  "fixtures": [
+    {
+      "round": 1,
+      "roundName": "Round 1",
+      "matches": [
+        {
+          "id": "01907e2a-eeee-7abc-9def-000000001001",
+          "status": "COMPLETED",
+          "scheduledAt": null,
+          "participants": [
+            { "participantId": "01907e2a-aaaa-…601", "name": "Sonipat Strikers U16", "slot": "HOME" },
+            { "participantId": "01907e2a-aaaa-…602", "name": "Panipat Panthers U16", "slot": "AWAY" }
+          ],
+          "result": {
+            "outcome": "COMPLETED",
+            "winnerParticipantId": "01907e2a-aaaa-…601",
+            "participants": [
+              { "participantId": "01907e2a-aaaa-…601", "name": "Sonipat Strikers U16", "value": 3, "unit": null, "standing": "WIN" },
+              { "participantId": "01907e2a-aaaa-…602", "name": "Panipat Panthers U16", "value": 1, "unit": null, "standing": "LOSS" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Errors: `404 TOURNAMENT_NOT_FOUND` (unknown or `DRAFT` slug), `404 COMPETITION_NOT_FOUND` (competition belongs to a different tournament), `404 FIXTURE_NOT_FOUND` (no draw yet), `409 LEADERBOARD_NOT_AVAILABLE` (nothing played yet).
 
 ---
 

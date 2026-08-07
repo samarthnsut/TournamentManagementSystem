@@ -77,6 +77,8 @@ erDiagram
 
 **Scope enum** (`ScopeType`, brief §8): `GLOBAL, ORGANIZATION, TOURNAMENT, COMPETITION` — CHECK-constrained on both `role.default_scope_type` and `user_role_assignment.scope_type`.
 
+Sprint 6 adds a fifth constant, `MATCH`, which is a **target only and never a grant** (ADR-015): match endpoints are addressed by match id, and authority over one is inherited from its competition via `MatchScopeResolver`. The two CHECK constraints deliberately still list only the original four, so the database refuses a MATCH-scoped assignment outright. Nothing in this document's grant model changes.
+
 Constraints the algorithm in §6 takes as given, so it never has to defend against malformed rows:
 
 - `ck_ura_global_scope`: `(scope_type = 'GLOBAL') = (scope_id IS NULL)` — the DB-level form of BR-URA-1.
@@ -165,7 +167,7 @@ These appear in prose elsewhere; none exists in `V4__seed_rbac.sql`. Any endpoin
 | `competition:update`, `match:schedule`, `fixture:read`, `approval:read` for `COMPETITION_OFFICIAL` | not listed | **allowed** | The seed gives the day-of role a workable set. |
 | `registration:create` for `SUPER_ADMIN` | denied | **allowed** | Falls out of "`SUPER_ADMIN` = every permission" (§4.1); harmless but worth knowing. |
 
-Known gap in the current seed, flagged rather than silently patched: **`COMPETITION_OFFICIAL` has `fixture:read` but not `fixture:generate`**, while 08 §11.1 places `fixture:generate` at COMPETITION scope and 01 §5 restricts `fixture:manage` to `TOURNAMENT_ADMIN` and above. Until Sprint 6 decides, fixture generation is a `TOURNAMENT_ADMIN` / `ORG_OFFICIAL` act.
+**Resolved in Sprint 6, no seed change:** `COMPETITION_OFFICIAL` keeps `fixture:read` without `fixture:generate`. 08 §11.1 places the *check* at COMPETITION scope — that is where the endpoint is addressed, not a statement about who holds the permission — and 01 §5's restriction of fixture management to `TOURNAMENT_ADMIN` and above is the product decision that governs. Making the draw is an administrative act with consequences for the whole competition (it consumes the approved entry list and, once played, can no longer be rebuilt — BR-F-3); running matches on the day is not. The day-of official schedules, starts, postpones and records results, and reads the draw they are working from. Generation stays a `TOURNAMENT_ADMIN` / `ORG_OFFICIAL` / `TENANT_ADMIN` act.
 
 ## 5. The Seven System Roles
 

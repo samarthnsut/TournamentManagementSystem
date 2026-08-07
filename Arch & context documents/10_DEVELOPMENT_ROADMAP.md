@@ -204,13 +204,13 @@ gantt
 **Goal:** Close registrations, generate fixtures, record results, and publish live leaderboards for the two MVP sports.
 
 **Deliverables**
-- [ ] Migrations: `fixture`, `match`, `match_participant`, `result`, `leaderboard_entry`
-- [ ] `RoundRobinFixtureGenerator` (circle method, handles odd count via bye) and `NoneFixtureGenerator` (direct-final for measured events like 100m)
-- [ ] Match lifecycle: `SCHEDULED, LIVE, COMPLETED, WALKOVER, CANCELLED, POSTPONED`; result entry gated by `match:record-result` permission
-- [ ] Result evaluators: `POINTS` (win/draw/loss from `rules{}`), `TIME` (lowest wins); `ResultEvaluatorFactory` dispatch
-- [ ] Leaderboards: `POINTS_TABLE` (points, then tie-breakers from `rules{}`) and `LOWEST_TIME`; recomputed on result confirmation; cached in Redis; public read via slug pages
-- [ ] Regeneration rules: fixtures immutable once any match is `LIVE`/`COMPLETED`; regenerate allowed before that with explicit confirmation
-- [ ] Proof-of-architecture test: register a fake `SWISS` strategy in tests and confirm the factories dispatch to it without core changes (Chess-readiness per brief)
+- [x] Migrations: `fixture`, `match`, `match_participant`, `result`, `leaderboard_entry`
+- [x] `RoundRobinFixtureGenerator` (circle method, handles odd count via bye) and `NoneFixtureGenerator` (direct-final for measured events like 100m)
+- [x] Match lifecycle: `SCHEDULED, LIVE, COMPLETED, WALKOVER, CANCELLED, POSTPONED`; result entry gated by `match:record-result` permission
+- [x] Result evaluators: `POINTS` (win/draw/loss from `rules{}`), `TIME` (lowest wins); `ResultEvaluatorFactory` dispatch
+- [x] Leaderboards: `POINTS_TABLE` (points, then tie-breakers from `rules{}`) and `LOWEST_TIME`; recomputed on result confirmation; materialized in `leaderboard_entry` transactionally with the result (04 §12 decision 3 — the Redis read-through of 03 §7 is deferred and changes no contract); public read via slug pages delivered as `/api/v1/public/t/{slug}/competitions/{id}/{fixtures,leaderboard}` (08 §13A)
+- [x] Regeneration rules: fixtures immutable once any match is `LIVE`/`COMPLETED`; regenerate allowed before that with explicit confirmation
+- [x] Proof-of-architecture test: register a fake `SWISS` strategy in tests and confirm the factories dispatch to it without core changes (Chess-readiness per brief)
 
 **Definition of Done:** Football competition with 5 teams → 10 round-robin matches, results entered, points table correct incl. tie-breakers; 100m with 8 runners → times entered → `LOWEST_TIME` board correct; walkover and postponed paths tested; no sport-conditional (`if sport == ...`) anywhere — enforced by review + grep in CI.
 
@@ -219,6 +219,8 @@ gantt
 ---
 
 ## Sprint 7 — Documents (S3) + AuditLog + hardening
+
+**Carried in from Sprint 6 — done:** anonymous fixtures and standings on `/t/{slug}` (08 §13A), with the slug/competition pairing enforced so a competition id alone cannot reach an unpublished tournament.
 
 **Goal:** File uploads via presigned URLs, immutable audit trail on all mutations, and a security/performance hardening pass before launch prep.
 

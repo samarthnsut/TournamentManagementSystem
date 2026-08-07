@@ -28,8 +28,10 @@ ADR log for the Tournament Management Platform. Format per ADR: Context / Decisi
 | ADR-012 | JWT stateless auth | Accepted |
 | ADR-013 | Flyway for schema migrations | Accepted |
 | ADR-014 | Audit via AOP interceptor writing JSONB before/after | Accepted |
+| ADR-015 | MATCH as a resolve-only scope type | Accepted |
+| ADR-016 | Sport-neutral leaderboard metric names | Accepted |
 
-Decision clusters worth reading together: tenancy (002, 003, 009), domain shape (004, 005, 006, 007, 008), platform plumbing (001, 011, 012, 013, 014).
+Decision clusters worth reading together: tenancy (002, 003, 009), domain shape (004, 005, 006, 007, 008), platform plumbing (001, 011, 012, 013, 014), fixtures and results (008, 015, 016).
 
 ---
 
@@ -257,3 +259,37 @@ Decision clusters worth reading together: tenancy (002, 003, 009), domain shape 
 **Consequences.** Uniform, hard-to-forget audit coverage with business-level actions and structured before/after diffs queryable via JSONB. Costs: one extra JSONB write per mutation in-transaction (accepted: an audit row without its mutation, or vice versa, is worse than the latency); snapshot serialization must exclude sensitive fields (password hashes, token material) via an explicit exclusion list; `audit_log` growth requires time-based partitioning/archival before it becomes a problem (tracked in 11).
 
 **Status.** Accepted — 2026-07-26.
+
+---
+
+## ADR-015 — MATCH as a resolve-only scope type
+
+**Context.** Doc 08 §12 addresses match operations flat — `POST /matches/{matchId}/result`, `/schedule`, `/start` — while authority over a match comes from its competition. `@RequiresPermission` resolves its scope id from a request parameter before the method runs, so a match-id path variable cannot be checked against `ScopeType.COMPETITION`: the ids are different entities. The four scopes in doc 05 §3 had no way to express "addressed by match, governed by competition".
+
+**Decision.** Add `MATCH` to `ScopeType` as a **target only, never a grant**. `MatchScopeResolver` implements `ScopeOwnershipResolver` and reports the match's owning organization unit plus its competition and tournament as parent scopes, so an existing COMPETITION, TOURNAMENT or ORGANIZATION grant satisfies a MATCH target with no new role assignments and no change to the seeded catalog. The `ck_ura_scope_type` and `ck_role_default_scope_type` check constraints are deliberately left listing only the original four, so the database refuses a MATCH-scoped grant outright.
+
+**Alternatives considered.**
+- *Nest every match endpoint under its competition* (`/competitions/{id}/matches/{matchId}/result`): satisfies the existing scopes but contradicts doc 08's flat item-operation convention and makes every client carry a competition id it does not otherwise need.
+- *Resolve the competition inside the controller and check manually:* moves authorization out of the annotation and back into method bodies — exactly what `PermissionAspect` exists to prevent, and unenforceable by the authz matrix test.
+- *Reuse COMPETITION and pass the competition id in the body:* the id would then be caller-supplied and unverified against the match, which is a privilege-escalation hole.
+
+**Consequences.** Match endpoints get the same declarative check as everything else, and no role, seed or migration changes. The enum now contains a value that is legal as a target and illegal as a grant — an asymmetry the enum itself documents, and which the DB constraints enforce rather than trusting convention. Future entity-addressed-but-inherited scopes (a result correction, say) follow the same pattern.
+
+**Status.** Accepted — 2026-08-07.
+
+---
+
+## ADR-016 — Sport-neutral leaderboard metric names
+
+**Context.** Doc 08 §13.1 sketches the points-table response with `goalDifference`. `PointsTableLeaderboard` is the same class that ranks a football league, a Swiss chess event and any future league sport (ADR-008); baking football's vocabulary into its output would put a sport-specific concept in the one place the strategy pattern exists to keep sport-free — and the grep gate added in Sprint 6 would flag the literal anyway.
+
+**Decision.** Emitted metrics are neutral: `played`, `won`, `drawn`, `lost`, `points`, `scoreFor`, `scoreAgainst`, `scoreDifference`. Tenants keep their own vocabulary in configuration — `rules.tiebreakers` accepts `GOAL_DIFFERENCE` and `GOALS_FOR` as aliases of `SCORE_DIFFERENCE` and `SCORE_FOR`, resolving to the same comparator — so a football organizer configures the table in football's words while the engine learns none of them. Presentation labels ("GD", "GF") belong to the frontend, which already knows which sport it is rendering.
+
+**Alternatives considered.**
+- *Follow doc 08 literally:* one sport's nouns in a shared strategy, and a second sport would either inherit nonsense keys or force a per-sport branch.
+- *Per-sport metric key maps in configuration:* solves naming but adds a schema surface and a failure mode (a typo silently renaming a column) for what is a display concern.
+- *Emit both neutral and aliased keys:* doubles the payload and leaves clients guessing which is canonical.
+
+**Consequences.** `metrics` is strategy-shaped and clients render what they are given rather than assuming a sport, which is what lets `LOWEST_TIME` (`bestValue`, `unit`, `attempts`) and `POINTS_TABLE` share one response type. Doc 08 §13.1's example payload is superseded by this ADR. An unrecognized tiebreaker name ranks nobody rather than throwing, so a typo in a tenant's config cannot take a live standings page down mid-tournament.
+
+**Status.** Accepted — 2026-08-07.
