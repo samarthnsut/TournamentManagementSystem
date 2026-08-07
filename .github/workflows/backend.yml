@@ -40,6 +40,28 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The extensibility promise in ARCHITECTURE_BRIEF section 7 is that adding a sport is one
+      # strategy class, never a branch. A conditional on the sport is how that decays, and it decays
+      # quietly — one "just this once" at a time — so it is checked mechanically rather than in
+      # review. Sport names are legitimate in migrations, seeds and test fixtures; only main source
+      # is scanned. See 10_DEVELOPMENT_ROADMAP risk R4.
+      - name: Reject sport conditionals
+        run: |
+          set -euo pipefail
+          if grep -rnE --include='*.java' \
+              -e '"(FOOTBALL|ATHLETICS[A-Z_0-9]*|CHESS|CRICKET|BASKETBALL|HOCKEY|KABADDI|BADMINTON|VOLLEYBALL)"' \
+              -e '(sport|sportCode|sportName)[[:space:]]*(==|!=)' \
+              -e '(sport|sportCode|sportName)[[:space:]]*\.(equals|equalsIgnoreCase|contains|startsWith)[[:space:]]*\(' \
+              -e 'switch[[:space:]]*\([[:space:]]*[a-zA-Z]*[sS]port' \
+              src/main/java; then
+            echo
+            echo "::error::Sport-specific branching found in backend/src/main/java."
+            echo "Dispatch through FixtureGeneratorFactory / ResultEvaluatorFactory /"
+            echo "LeaderboardStrategyFactory instead, or move the value into config.rules."
+            exit 1
+          fi
+          echo "No sport conditionals in main source."
+
       - name: Build and run tests
         run: ./gradlew build --no-daemon --stacktrace
 
