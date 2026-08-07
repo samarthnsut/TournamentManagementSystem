@@ -38,19 +38,22 @@ public class CompetitionService {
     private final SportRepository sportRepository;
     private final TournamentService tournamentService;
     private final SportConfigurationValidator sportConfigurationValidator;
+    private final CompetitionConfigResolver competitionConfigResolver;
 
     public CompetitionService(
         CompetitionRepository competitionRepository,
         SportConfigurationRepository sportConfigurationRepository,
         SportRepository sportRepository,
         TournamentService tournamentService,
-        SportConfigurationValidator sportConfigurationValidator
+        SportConfigurationValidator sportConfigurationValidator,
+        CompetitionConfigResolver competitionConfigResolver
     ) {
         this.competitionRepository = competitionRepository;
         this.sportConfigurationRepository = sportConfigurationRepository;
         this.sportRepository = sportRepository;
         this.tournamentService = tournamentService;
         this.sportConfigurationValidator = sportConfigurationValidator;
+        this.competitionConfigResolver = competitionConfigResolver;
     }
 
     @Transactional
@@ -89,7 +92,7 @@ public class CompetitionService {
         competition.setRegistrationCloseAt(request.registrationCloseAt());
         competition.setStatus(CompetitionStatus.DRAFT);
 
-        return toResponse(competitionRepository.save(competition), configuredType);
+        return toResponse(competitionRepository.save(competition));
     }
 
     @Transactional(readOnly = true)
@@ -171,21 +174,13 @@ public class CompetitionService {
     }
 
     private CompetitionResponse toResponse(Competition competition) {
-        SportConfiguration configuration = sportConfigurationRepository
-            .findByIdAndDeletedAtIsNull(competition.getSportConfigurationId())
-            .orElse(null);
-        ParticipantType participantType = null;
-        if (configuration != null) {
-            JsonNode config = sportConfigurationValidator.parse(configuration.getConfig());
-            participantType = ParticipantType.valueOf(config.get("participantType").asText());
-        }
-        return toResponse(competition, participantType);
-    }
-
-    private CompetitionResponse toResponse(Competition competition, ParticipantType participantType) {
         String sportCode = sportRepository.findByIdAndDeletedAtIsNull(competition.getSportId())
             .map(Sport::getCode)
             .orElse(null);
+
+        // One resolver for the whole strategy set, so what a client is told can never disagree with
+        // the configuration the fixture and result services actually run against.
+        CompetitionConfigResolver.ResolvedConfig config = competitionConfigResolver.resolve(competition);
 
         return new CompetitionResponse(
             competition.getId(),
@@ -195,7 +190,10 @@ public class CompetitionService {
             competition.getSportId(),
             sportCode,
             competition.getSportConfigurationId(),
-            participantType,
+            config.participantType(),
+            config.fixtureGenerator(),
+            config.resultEvaluator(),
+            config.leaderboardStrategy(),
             competition.getStatus(),
             competition.getMaxRegistrations(),
             competition.getRegistrationOpenAt(),

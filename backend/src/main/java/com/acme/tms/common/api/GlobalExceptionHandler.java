@@ -3,6 +3,7 @@ package com.acme.tms.common.api;
 import com.acme.tms.common.exception.TmsException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,27 @@ public class GlobalExceptionHandler {
         problem.setInstance(URI.create(request.getRequestURI()));
         problem.setProperty("code", exception.getCode());
         return ResponseEntity.status(exception.getStatus()).body(problem);
+    }
+
+    /**
+     * The database's version check firing means two writers raced past the service-level check. It
+     * is the same situation as a stale version in the request body and gets the same code — a
+     * client should not have to tell "beaten by a millisecond" from "beaten by a minute".
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> handleOptimisticLock(
+        OptimisticLockingFailureException exception,
+        HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            "This record changed while you were working on it; refetch and submit again."
+        );
+        problem.setType(problemType("STALE_VERSION"));
+        problem.setTitle(HttpStatus.CONFLICT.getReasonPhrase());
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("code", "STALE_VERSION");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

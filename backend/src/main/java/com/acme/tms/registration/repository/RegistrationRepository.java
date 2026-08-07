@@ -15,6 +15,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, UUID
 
     List<Registration> findByCompetitionIdAndDeletedAtIsNullOrderBySubmittedAtAsc(UUID competitionId);
 
+    /** The entrant list fixtures are drawn from and leaderboards are seeded with (BR-F-2). */
+    List<Registration> findByCompetitionIdAndStatusAndDeletedAtIsNullOrderBySubmittedAtAsc(
+        UUID competitionId, RegistrationStatus status);
+
     /** A withdrawn entry is not live, so it neither blocks re-entry nor fills a slot. */
     boolean existsByCompetitionIdAndParticipantIdAndStatusNotAndDeletedAtIsNull(
         UUID competitionId, UUID participantId, RegistrationStatus excludedStatus);
