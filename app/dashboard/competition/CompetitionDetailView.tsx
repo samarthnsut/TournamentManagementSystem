@@ -9,6 +9,9 @@ import Card from '../../../components/ui/Card'
 import Input from '../../../components/ui/Input'
 import StatusBadge from '../../../components/ui/StatusBadge'
 import DynamicForm, { validateAnswers } from '../../../components/registration/DynamicForm'
+import ConfirmDialog from '../../../components/ui/ConfirmDialog'
+import Modal from '../../../components/ui/Modal'
+import CompetitionJourney from '../../../components/competition/CompetitionJourney'
 import FixturesPanel from '../../../components/competition/FixturesPanel'
 import LeaderboardPanel from '../../../components/competition/LeaderboardPanel'
 import FormBuilder, {
@@ -18,6 +21,7 @@ import FormBuilder, {
   type BuilderField,
 } from '../../../components/registration/FormBuilder'
 import { useAuth } from '../../../lib/useAuth'
+import { ACTION_COPY, COMPETITION_TRANSITIONS } from '../../../lib/lifecycle'
 import { approveRegistration, rejectRegistration } from '../../../lib/api/approvals'
 import {
   getActiveFormDefinition,
@@ -31,6 +35,7 @@ import {
 } from '../../../lib/api/registrations'
 import {
   getCompetitions,
+  getSportConfigurations,
   getTournament,
   nextCompetitionAction,
   transitionCompetition,
@@ -49,6 +54,16 @@ export default function CompetitionDetailView({
   const [error, setError] = useState('')
   const [builderFields, setBuilderFields] = useState<BuilderField[]>([emptyField()])
   const [isEditingForm, setIsEditingForm] = useState(false)
+  const [pendingAction, setPendingAction] = useState<Parameters<typeof transitionCompetition>[1] | null>(null)
+  const [isAddingEntry, setIsAddingEntry] = useState(false)
+  // Modal-scoped so a failure is shown where the person is looking; the page banner sits behind
+  // the dialog and would never be read.
+  const [entryError, setEntryError] = useState('')
+  const [formError, setFormError] = useState('')
+  // Entry decisions get the same treatment as status changes: say what will happen first.
+  const [pendingDecision, setPendingDecision] = useState<
+    { kind: 'approve' | 'reject' | 'withdraw'; registrationId: string; name: string } | null
+  >(null)
 
   const [entrantName, setEntrantName] = useState('')
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -63,6 +78,13 @@ export default function CompetitionDetailView({
 
   // The API has no single-competition read that also gives us the tournament context, so the
   // competition is picked out of its tournament's list.
+  // The squad-size rule lives in the sport configuration's rules blob. Reading it here means the
+  // limit is stated before someone hits it, rather than only as a rejection afterwards.
+  const configurationsQuery = useQuery({
+    queryKey: ['sport-configurations'],
+    queryFn: getSportConfigurations,
+  })
+
   const competitionsQuery = useQuery({
     queryKey: ['competitions', tournamentId],
     queryFn: () => getCompetitions(tournamentId),
@@ -110,11 +132,13 @@ export default function CompetitionDetailView({
     mutationFn: (schema: FormSchema) => publishFormDefinition(competitionId, schema),
     onSuccess: async () => {
       setError('')
+      setFormError('')
       setIsEditingForm(false)
       await queryClient.invalidateQueries({ queryKey: ['active-form', competitionId] })
       await queryClient.invalidateQueries({ queryKey: ['form-definitions', competitionId] })
     },
-    onError: report,
+    onError: (cause) =>
+      setFormError(cause instanceof Error ? cause.message : 'The form could not be published'),
   })
 
   const transition = useMutation({
@@ -122,9 +146,13 @@ export default function CompetitionDetailView({
       transitionCompetition(competitionId, action),
     onSuccess: async () => {
       setError('')
+      setPendingAction(null)
       await queryClient.invalidateQueries({ queryKey: ['competitions', tournamentId] })
     },
-    onError: report,
+    onError: (cause) => {
+      setPendingAction(null)
+      report(cause)
+    },
   })
 
   const register = useMutation({
@@ -140,46 +168,56 @@ export default function CompetitionDetailView({
       }),
     onSuccess: async () => {
       setError('')
+      setEntryError('')
       setEntrantName('')
       setMembers([])
       setAnswers({})
       setAnswerErrors({})
+      setIsAddingEntry(false)
       await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
     },
-    onError: report,
+    onError: (cause) =>
+      setEntryError(cause instanceof Error ? cause.message : 'The entry could not be submitted'),
   })
 
   const approve = useMutation({
     mutationFn: (registrationId: string) => approveRegistration(registrationId),
     onSuccess: async () => {
       setError('')
+      setPendingDecision(null)
       await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
     },
-    onError: report,
+    onError: (cause) => {
+      setPendingDecision(null)
+      report(cause)
+    },
   })
 
   const reject = useMutation({
-    mutationFn: (registrationId: string) => {
-      const reason = window.prompt('Why is this entry being rejected? The entrant is told.')
-      if (!reason || !reason.trim()) {
-        return Promise.reject(new Error('A reason is required when rejecting.'))
-      }
-      return rejectRegistration(registrationId, reason.trim())
-    },
+    mutationFn: ({ registrationId, reason }: { registrationId: string; reason: string }) =>
+      rejectRegistration(registrationId, reason),
     onSuccess: async () => {
       setError('')
+      setPendingDecision(null)
       await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
     },
-    onError: report,
+    onError: (cause) => {
+      setPendingDecision(null)
+      report(cause)
+    },
   })
 
   const withdraw = useMutation({
     mutationFn: withdrawRegistration,
     onSuccess: async () => {
       setError('')
+      setPendingDecision(null)
       await queryClient.invalidateQueries({ queryKey: ['registrations', competitionId] })
     },
-    onError: report,
+    onError: (cause) => {
+      setPendingDecision(null)
+      report(cause)
+    },
   })
 
   if (competitionsQuery.isLoading) {
@@ -212,6 +250,15 @@ export default function CompetitionDetailView({
 
   const step = nextCompetitionAction(competition.status)
   const isTeamEvent = competition.participantType === 'TEAM'
+
+  const teamSize = (() => {
+    const configuration = configurationsQuery.data?.find(
+      (candidate) => candidate.id === competition.sportConfigurationId,
+    )
+    const rules = (configuration?.config as { rules?: Record<string, unknown> } | undefined)?.rules
+    const size = rules?.teamSize as { min?: number; max?: number } | undefined
+    return size ?? null
+  })()
   const canEnter = competition.status === 'OPEN' && hasActiveForm && can('registration:create')
 
   const allRegistrations = registrationsQuery.data ?? []
@@ -220,11 +267,12 @@ export default function CompetitionDetailView({
   const approvedCount = allRegistrations.filter((r) => r.status === 'APPROVED').length
   const submittedCount = allRegistrations.length
 
-  // No published form means the builder is the only thing to show, so it is a draft either way.
   const canEditForm = can('form:create')
   const canDecide = can('registration:approve')
   // Without form permissions there is nothing to draft, only the published form to read.
-  const isDraftingForm = canEditForm && (!hasActiveForm || isEditingForm)
+  // Driven by intent alone. Deriving it from "no form exists" made the close button a no-op: the
+  // condition recomputed to true the moment the modal shut.
+  const isDraftingForm = canEditForm && isEditingForm
   const versionCount = versionsQuery.data?.length ?? 0
   const nextVersion = (activeForm?.version ?? 0) + 1
 
@@ -271,7 +319,7 @@ export default function CompetitionDetailView({
                 <Button
                   className="btn-gradient"
                   disabled={transition.isPending}
-                  onClick={() => transition.mutate(step.action)}
+                  onClick={() => setPendingAction(step.action)}
                 >
                   {transition.isPending ? 'Working…' : step.label}
                 </Button>
@@ -287,40 +335,61 @@ export default function CompetitionDetailView({
         </div>
 
         <div className="mx-auto max-w-5xl space-y-8 px-6 py-8 sm:px-8 sm:py-12">
+          <CompetitionJourney
+            status={competition.status}
+            hasForm={hasActiveForm}
+            tournamentStatus={tournamentQuery.data?.status}
+          />
+
           {/* Registration form definition */}
           <Card className={isDraftingForm ? 'border-l-4 border-l-amber-500' : ''}>
             <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-white">
-                  {isDraftingForm ? 'Editing the registration form' : 'Registration form'}
-                </h2>
+                <h2 className="text-lg font-semibold text-white">Registration form</h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  {isDraftingForm
-                    ? hasActiveForm
-                      ? `Draft of version ${nextVersion} · not visible to entrants yet`
-                      : 'Not published yet · entrants cannot enter until it is published'
-                    : `Version ${activeForm?.version} is live${
+                  {hasActiveForm
+                    ? `Version ${activeForm?.version} is live${
                         versionCount > 1 ? ` · ${versionCount} versions published` : ''
-                      }`}
+                      }`
+                    : 'Not published yet · entrants cannot enter until it is'}
                 </p>
               </div>
-              {isDraftingForm ? (
-                <span className="whitespace-nowrap rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300">
-                  Unpublished draft
-                </span>
-              ) : !canEditForm ? null : (
+              {!canEditForm ? null : (
                 <Button
-                  variant="secondary"
-                  className="px-4 py-2 text-sm"
+                  variant={hasActiveForm ? 'secondary' : 'primary'}
+                  className={`px-4 py-2 text-sm ${hasActiveForm ? '' : 'btn-gradient'}`}
                   onClick={() => setIsEditingForm(true)}
                 >
-                  Edit form
+                  {hasActiveForm ? 'Edit form' : 'Create the form'}
                 </Button>
               )}
             </div>
 
-            {isDraftingForm ? (
-              <>
+            {activeForm ? (
+              <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-5">
+                <p className="mb-4 font-mono text-xs uppercase tracking-wider text-gray-500">
+                  What entrants see
+                </p>
+                <DynamicForm schema={activeForm.schema} values={{}} onChange={() => {}} readOnly />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No registration form has been published for this competition yet.
+              </p>
+            )}
+
+            <Modal
+                isOpen={isDraftingForm}
+                error={formError}
+                title={hasActiveForm ? `Edit the registration form (v${nextVersion} draft)` : 'Create the registration form'}
+                description={
+                  hasActiveForm
+                    ? 'Publishing creates a new version. Entries already submitted keep the version they answered.'
+                    : 'Entrants cannot enter until this is published.'
+                }
+                onClose={() => setIsEditingForm(false)}
+                size="lg"
+              >
                 {/* The consequence, stated where the decision is made rather than above it. */}
                 <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
                   <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -393,32 +462,39 @@ export default function CompetitionDetailView({
                     </Button>
                   ) : null}
                 </div>
-              </>
-            ) : activeForm ? (
-              <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-5">
-                <p className="mb-4 font-mono text-xs uppercase tracking-wider text-gray-500">
-                  What entrants see
-                </p>
-                <DynamicForm schema={activeForm.schema} values={{}} onChange={() => {}} readOnly />
-              </div>
-            ) : (
-              // No form published, and this viewer cannot publish one.
-              <p className="text-sm text-gray-500">
-                No registration form has been published for this competition yet.
-              </p>
-            )}
+            </Modal>
           </Card>
 
           {/* Enter a participant */}
           {canEnter ? (
+            <Button
+              className="btn-gradient"
+              onClick={() => {
+                setEntryError('')
+                setIsAddingEntry(true)
+              }}
+            >
+              + Add an entry
+            </Button>
+          ) : (
             <Card>
               <h2 className="mb-1 text-lg font-semibold text-white">Add an entry</h2>
-              <p className="mb-5 text-sm text-gray-500">
-                Register {isTeamEvent ? 'a team' : 'an athlete'} on their behalf. Answers are
-                validated against version {activeForm?.version}.
+              <p className="text-sm text-gray-500">
+                {!hasActiveForm
+                  ? 'Publish a registration form first.'
+                  : `Entries are only accepted while the competition is open. It is currently ${competition.status.toLowerCase()}.`}
               </p>
+            </Card>
+          )}
 
-              <form onSubmit={handleRegister} className="space-y-5">
+          <Modal
+            isOpen={isAddingEntry}
+            error={entryError}
+            title="Add an entry"
+            description={`Register ${isTeamEvent ? 'a team' : 'an athlete'} on their behalf. Answers are validated against version ${activeForm?.version ?? ''}.`}
+            onClose={() => setIsAddingEntry(false)}
+          >
+              <form id="add-entry-form" onSubmit={handleRegister} className="space-y-5">
                 <div>
                   <label htmlFor="entrantName" className="mb-2 block text-sm font-medium text-gray-300">
                     {isTeamEvent ? 'Team name' : 'Athlete name'}
@@ -435,7 +511,18 @@ export default function CompetitionDetailView({
 
                 {isTeamEvent ? (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-300">Squad</label>
+                    <label className="mb-2 block text-sm font-medium text-gray-300">
+                      Squad
+                      {teamSize ? (
+                        <span className="ml-2 font-normal text-gray-500">
+                          {teamSize.min != null && teamSize.max != null
+                            ? `${teamSize.min}–${teamSize.max} members required`
+                            : teamSize.min != null
+                              ? `at least ${teamSize.min} members`
+                              : `up to ${teamSize.max} members`}
+                        </span>
+                      ) : null}
+                    </label>
                     <div className="space-y-3">
                       {members.map((member, index) => (
                         <div key={index} className="flex flex-wrap items-center gap-3">
@@ -504,21 +591,22 @@ export default function CompetitionDetailView({
                   </div>
                 ) : null}
 
-                <Button type="submit" className="btn-gradient" disabled={register.isPending || !entrantName}>
+              </form>
+
+              <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-dark-border pt-5">
+                <Button variant="secondary" className="px-5 py-2 text-sm" onClick={() => setIsAddingEntry(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="add-entry-form"
+                  className="btn-gradient px-5 py-2 text-sm"
+                  disabled={register.isPending || !entrantName}
+                >
                   {register.isPending ? 'Submitting…' : 'Submit entry'}
                 </Button>
-              </form>
-            </Card>
-          ) : (
-            <Card>
-              <h2 className="mb-1 text-lg font-semibold text-white">Add an entry</h2>
-              <p className="text-sm text-gray-500">
-                {!hasActiveForm
-                  ? 'Publish a registration form first.'
-                  : `Entries are only accepted while the competition is open. It is currently ${competition.status.toLowerCase()}.`}
-              </p>
-            </Card>
-          )}
+              </div>
+          </Modal>
 
           {/* Entries */}
           <Card>
@@ -596,7 +684,7 @@ export default function CompetitionDetailView({
                         <>
                         <button
                           type="button"
-                          onClick={() => approve.mutate(registration.id)}
+                          onClick={() => setPendingDecision({ kind: 'approve', registrationId: registration.id, name: registration.participant.displayName })}
                           disabled={approve.isPending}
                           className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-300 transition hover:border-green-400 hover:bg-green-500/20 hover:text-green-200 focus:outline-none focus:ring-2 focus:ring-green-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -604,7 +692,7 @@ export default function CompetitionDetailView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => reject.mutate(registration.id)}
+                          onClick={() => setPendingDecision({ kind: 'reject', registrationId: registration.id, name: registration.participant.displayName })}
                           disabled={reject.isPending}
                           className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:border-red-400 hover:bg-red-500/20 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -614,7 +702,7 @@ export default function CompetitionDetailView({
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => withdraw.mutate(registration.id)}
+                          onClick={() => setPendingDecision({ kind: 'withdraw', registrationId: registration.id, name: registration.participant.displayName })}
                           disabled={withdraw.isPending}
                           className="rounded-lg border border-dark-border px-4 py-2 text-sm font-medium text-gray-400 transition hover:border-gray-600 hover:bg-white/5 hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -644,6 +732,46 @@ export default function CompetitionDetailView({
           ) : null}
         </div>
       </main>
+
+      <ConfirmDialog
+        isOpen={pendingAction !== null}
+        copy={pendingAction ? COMPETITION_TRANSITIONS[pendingAction] : null}
+        isWorking={transition.isPending}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => pendingAction && transition.mutate(pendingAction)}
+      />
+
+      <ConfirmDialog
+        isOpen={pendingDecision !== null}
+        copy={
+          pendingDecision === null
+            ? null
+            : pendingDecision.kind === 'approve'
+              ? { ...ACTION_COPY.approveEntry, title: `Approve ${pendingDecision.name}?` }
+              : pendingDecision.kind === 'withdraw'
+                ? { ...ACTION_COPY.withdrawEntry, title: `Withdraw ${pendingDecision.name}?` }
+                : {
+                    title: `Reject ${pendingDecision.name}?`,
+                    summary: 'The entry is refused and the entrant is told why.',
+                    locks: 'They keep their place in the list as rejected rather than disappearing.',
+                    confirmLabel: 'Reject entry',
+                  }
+        }
+        // Rejection is the one decision that owes the entrant an explanation, so the reason is
+        // mandatory — the API rejects a blank one anyway.
+        reasonLabel={pendingDecision?.kind === 'reject' ? 'Why is this being rejected?' : undefined}
+        reasonHint={
+          pendingDecision?.kind === 'reject' ? 'The entrant is shown this, so keep it factual.' : undefined
+        }
+        isWorking={approve.isPending || reject.isPending || withdraw.isPending}
+        onCancel={() => setPendingDecision(null)}
+        onConfirm={(reason) => {
+          if (!pendingDecision) return
+          if (pendingDecision.kind === 'approve') approve.mutate(pendingDecision.registrationId)
+          else if (pendingDecision.kind === 'withdraw') withdraw.mutate(pendingDecision.registrationId)
+          else reject.mutate({ registrationId: pendingDecision.registrationId, reason: reason ?? '' })
+        }}
+      />
     </>
   )
 }

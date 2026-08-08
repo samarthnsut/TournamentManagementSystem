@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByInviteTokenHashAndDeletedAtIsNull(String inviteTokenHash);
 
+    Optional<User> findByPasswordResetTokenHashAndDeletedAtIsNull(String passwordResetTokenHash);
+
     /**
      * Users holding at least one ORGANIZATION-scoped assignment inside the given units.
      *

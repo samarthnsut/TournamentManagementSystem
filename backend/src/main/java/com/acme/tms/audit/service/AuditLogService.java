@@ -71,12 +71,13 @@ public class AuditLogService {
         }
 
         List<UUID> visibleUnits = scopeEvaluator.visibleOrganizationUnitIds(userId, "audit:read");
-        if (visibleUnits.isEmpty()) {
-            return List.of();
-        }
 
+        // Even with no readable subtree, a caller can always see what they themselves did.
         return toResponses(auditLogRepository
-            .findByOrganizationUnitIdInOrderByTimestampDesc(visibleUnits, PageRequest.of(0, Math.clamp(limit, 1, 200)))
+            .findByOrganizationUnitIdInOrActorIdOrderByTimestampDesc(
+                visibleUnits.isEmpty() ? List.of(userId) : visibleUnits,
+                userId,
+                PageRequest.of(0, Math.clamp(limit, 1, 200)))
             .getContent());
     }
 

@@ -14,6 +14,7 @@ import com.acme.tms.common.security.CurrentUser;
 import com.acme.tms.common.security.ScopeEvaluator;
 import com.acme.tms.organization.service.OrganizationUnitService;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,19 +32,22 @@ public class UserService {
     private final RoleAssignmentService roleAssignmentService;
     private final ScopeEvaluator scopeEvaluator;
     private final CurrentUser currentUser;
+    private final ApplicationEventPublisher events;
 
     public UserService(
         UserRepository userRepository,
         OrganizationUnitService organizationUnitService,
         RoleAssignmentService roleAssignmentService,
         ScopeEvaluator scopeEvaluator,
-        CurrentUser currentUser
+        CurrentUser currentUser,
+        ApplicationEventPublisher events
     ) {
         this.userRepository = userRepository;
         this.organizationUnitService = organizationUnitService;
         this.roleAssignmentService = roleAssignmentService;
         this.scopeEvaluator = scopeEvaluator;
         this.currentUser = currentUser;
+        this.events = events;
     }
 
     /**
@@ -93,6 +97,17 @@ public class UserService {
             roleAssignmentService.assign(user.getId(), request.initialRole());
         }
 
+        // Delivered after this transaction commits, so a rolled-back invite never reaches an inbox.
+        // The token is still returned below regardless: mail is best-effort, and an organizer with
+        // no working SMTP has to be able to pass the invite on by hand.
+        events.publishEvent(new UserInvitedEvent(
+            user.getId(),
+            user.getEmail(),
+            user.getFullName(),
+            inviteToken,
+            inviterName()
+        ));
+
         return new InviteUserResponse(
             user.getId(),
             user.getEmail(),
@@ -101,6 +116,20 @@ public class UserService {
             request.organizationUnitId(),
             inviteToken
         );
+    }
+
+    /**
+     * Who to name in the invite email. Best-effort by design: this is a courtesy line in a message
+     * body, and failing to resolve it must never be the reason an invite is not created.
+     */
+    private String inviterName() {
+        try {
+            return userRepository.findById(currentUser.requireUserId())
+                .map(User::getFullName)
+                .orElse(null);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 }
 

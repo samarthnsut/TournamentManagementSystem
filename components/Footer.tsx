@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import Logo from './Logo'
 
 export default function Footer() {
@@ -9,7 +10,15 @@ export default function Footer() {
           Tournament management built for federations, organizers, and athletes—powered by Tekspo
           Infinity.
         </p>
-        <p className="text-sm text-gray-500">© {new Date().getFullYear()} Tekspo Infinity</p>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <Link
+            href="/terms"
+            className="text-sm text-gray-400 transition hover:text-white"
+          >
+            Terms of use
+          </Link>
+          <p className="text-sm text-gray-500">© {new Date().getFullYear()} Tekspo Infinity</p>
+        </div>
       </div>
     </footer>
   )

@@ -17,7 +17,9 @@ export default function SignInPage() {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (auth) => {
-      storeAuth(auth)
+      // Unchecked keeps the session in sessionStorage, so closing the browser signs you out —
+      // which is what someone on a shared machine is asking for by leaving it unticked.
+      storeAuth(auth, remember)
       router.push('/dashboard')
     },
     onError: (mutationError) => {

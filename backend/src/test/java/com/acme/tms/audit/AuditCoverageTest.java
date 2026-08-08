@@ -44,6 +44,14 @@ class AuditCoverageTest {
         "RefreshTokenService.rotate",
         "RefreshTokenService.logout",
 
+        // Password recovery, also an authentication event rather than an entity mutation — and an
+        // anonymous one: forgotPassword is answered identically whether or not the address exists,
+        // so there is deliberately no subject to attribute a row to. Recording an attempt would
+        // create exactly the register of who-has-an-account that the endpoint refuses to leak.
+        // The resulting password change is visible as every session being revoked.
+        "PasswordResetService.forgotPassword",
+        "PasswordResetService.resetPassword",
+
         // Writes a row *about* another entity's decision; the decision itself is audited on the
         // registration by RegistrationApprovalService.
         "ApprovalInstanceService.open",

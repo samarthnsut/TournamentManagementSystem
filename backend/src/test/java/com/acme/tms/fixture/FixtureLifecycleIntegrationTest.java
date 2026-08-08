@@ -83,6 +83,50 @@ class FixtureLifecycleIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void generatingTheDrawStartsTheCompetition() {
+        // BR-F-2: making the draw is what moves a competition into play. Leaving that to a separate
+        // button is how an organizer ends up completing a competition that was never drawn.
+        CompetitionFixture.Entered entered =
+            CompetitionFixture.closedTeamCompetition(api, "autostart@example.com", 4);
+
+        assertThat(api.get("/api/v1/competitions/" + entered.competitionId(), entered.token())
+            .json().path("status").asText()).isEqualTo("CLOSED");
+
+        generate(entered);
+
+        assertThat(api.get("/api/v1/competitions/" + entered.competitionId(), entered.token())
+            .json().path("status").asText()).isEqualTo("IN_PROGRESS");
+    }
+
+    @Test
+    void aCompetitionAlreadyUnderWayCanStillBeDrawn() {
+        // An organizer who pressed Start before generating must not be stranded.
+        CompetitionFixture.Entered entered =
+            CompetitionFixture.closedTeamCompetition(api, "startedfirst@example.com", 4);
+        api.post("/api/v1/competitions/" + entered.competitionId() + "/start", Map.of(), entered.token());
+
+        ApiClient.Response response = generate(entered);
+
+        assertThat(response.status()).isEqualTo(201);
+        assertThat(response.json().path("matchCount").asInt()).isEqualTo(6);
+    }
+
+    @Test
+    void aCompletedCompetitionCanNoLongerBeDrawn() {
+        CompetitionFixture.Entered entered =
+            CompetitionFixture.closedTeamCompetition(api, "finished@example.com", 4);
+        api.post("/api/v1/competitions/" + entered.competitionId() + "/start", Map.of(), entered.token());
+        api.post("/api/v1/competitions/" + entered.competitionId() + "/complete", Map.of(), entered.token());
+
+        ApiClient.Response response = generate(entered);
+
+        assertThat(response.status()).isEqualTo(409);
+        assertThat(response.errorCode()).isEqualTo("COMPETITION_NOT_CLOSED");
+        // The message has to say what is actually wrong, not "close entries first".
+        assertThat(response.json().path("detail").asText()).contains("no longer be drawn");
+    }
+
+    @Test
     void anOpenCompetitionCannotBeDrawnYet() {
         // BR-F-2: entries have to be settled first, or half the field would be drawn.
         CompetitionFixture fixture = CompetitionFixture.openTeamCompetition(api, "open@example.com");

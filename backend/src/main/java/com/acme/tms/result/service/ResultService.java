@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -112,7 +113,14 @@ public class ResultService {
         MatchContext context = new MatchContext(matchId, lineup);
         RawResultInput raw = toRawInput(request);
 
-        evaluator.validate(raw, context, config.rules());
+        try {
+            evaluator.validate(raw, context, config.rules());
+        } catch (ValidationException exception) {
+            // Evaluators are pure and only know participants by id, so their messages name UUIDs.
+            // Swapping in display names here keeps them that way while giving the official
+            // something they can act on — "Alpha" rather than a 36-character id.
+            throw new ValidationException(exception.getCode(), withParticipantNames(exception.getMessage(), lineup));
+        }
         EvaluatedResult evaluation = evaluator.evaluate(raw, context, config.rules());
 
         MatchStatus target = request.outcome() == ResultOutcome.WALKOVER
@@ -147,6 +155,22 @@ public class ResultService {
             match.getVersion(),
             matchAssembler.summarize(result, matchAssembler.displayNames(participantIds))
         );
+    }
+
+    /** Replaces any participant id appearing in a message with that participant's name. */
+    private String withParticipantNames(String message, List<UUID> lineup) {
+        Map<UUID, String> names = matchAssembler.displayNames(new LinkedHashSet<>(lineup));
+        String humanized = message;
+        for (Map.Entry<UUID, String> entry : names.entrySet()) {
+            if (entry.getValue() != null) {
+                humanized = humanized.replace(entry.getKey().toString(), entry.getValue());
+            }
+        }
+        // An id that is not in the lineup has no name to swap in; say so rather than leaving a
+        // bare UUID in front of someone.
+        return humanized.replaceAll(
+            "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b",
+            "someone not in this match");
     }
 
     private RawResultInput toRawInput(RecordResultRequest request) {

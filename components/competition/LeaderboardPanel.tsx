@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import Card from '../ui/Card'
+import Podium from './Podium'
 import StandingsTable from './StandingsTable'
 import { ApiError } from '../../lib/api/client'
 import { getLeaderboard } from '../../lib/api/fixtures'
@@ -42,6 +43,7 @@ export default function LeaderboardPanel({ competitionId }: { competitionId: str
         ) : null}
       </div>
 
+      {board ? <Podium board={board} /> : null}
       <StandingsTable board={board} isLoading={leaderboardQuery.isLoading} />
     </Card>
   )

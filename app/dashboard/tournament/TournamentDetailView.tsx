@@ -10,8 +10,11 @@ import Input from '../../../components/ui/Input'
 import StatusBadge from '../../../components/ui/StatusBadge'
 import Select from '../../../components/ui/Select'
 import DocumentPanel from '../../../components/documents/DocumentPanel'
+import ConfirmDialog from '../../../components/ui/ConfirmDialog'
+import Modal from '../../../components/ui/Modal'
 import { useAuth } from '../../../lib/useAuth'
 import { buildConfigFor, hasPresetFor } from '../../../lib/sportPresets'
+import { COMPETITION_TRANSITIONS, TOURNAMENT_TRANSITIONS } from '../../../lib/lifecycle'
 import {
   createCompetition,
   createSportConfiguration,
@@ -90,6 +93,17 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
     ])
   }
 
+  // Every status change is held here until the organizer confirms it in a dialog that says what
+  // the change actually does.
+  const [pendingTournamentAction, setPendingTournamentAction] = useState<TournamentAction | null>(null)
+  const [pendingCompetitionAction, setPendingCompetitionAction] = useState<{
+    id: string
+    name: string
+    action: CompetitionAction
+  } | null>(null)
+  const [isAddingCompetition, setIsAddingCompetition] = useState(false)
+  const [addCompetitionError, setAddCompetitionError] = useState('')
+
   const reportError = (error: unknown) =>
     setActionError(error instanceof Error ? error.message : 'Action failed')
 
@@ -97,9 +111,13 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
     mutationFn: (action: TournamentAction) => transitionTournament(tournamentId, action),
     onSuccess: async () => {
       setActionError('')
+      setPendingTournamentAction(null)
       await refresh()
     },
-    onError: reportError,
+    onError: (cause) => {
+      setPendingTournamentAction(null)
+      reportError(cause)
+    },
   })
 
   const approvalPolicy = useMutation({
@@ -116,9 +134,13 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
       transitionCompetition(id, action),
     onSuccess: async () => {
       setActionError('')
+      setPendingCompetitionAction(null)
       await refresh()
     },
-    onError: reportError,
+    onError: (cause) => {
+      setPendingCompetitionAction(null)
+      reportError(cause)
+    },
   })
 
   /**
@@ -164,10 +186,15 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
       setActionError('')
       setCompetitionName('')
       setMaxRegistrations('')
+      setIsAddingCompetition(false)
+      setAddCompetitionError('')
       await queryClient.invalidateQueries({ queryKey: ['sport-configurations'] })
       await refresh()
     },
-    onError: reportError,
+    onError: (cause) =>
+      setAddCompetitionError(
+        cause instanceof Error ? cause.message : 'The competition could not be created',
+      ),
   })
 
   if (tournamentQuery.isLoading) {
@@ -245,7 +272,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                 <Button
                   className="btn-gradient"
                   disabled={tournamentTransition.isPending}
-                  onClick={() => tournamentTransition.mutate(advance.action)}
+                  onClick={() => setPendingTournamentAction(advance.action)}
                 >
                   {tournamentTransition.isPending ? 'Working…' : advance.label}
                 </Button>
@@ -260,7 +287,7 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                   variant="ghost"
                   className="text-red-300 hover:text-red-200"
                   disabled={tournamentTransition.isPending}
-                  onClick={() => tournamentTransition.mutate('cancel')}
+                  onClick={() => setPendingTournamentAction('cancel')}
                 >
                   Cancel tournament
                 </Button>
@@ -330,10 +357,23 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
           </Card>
           ) : null}
 
-          <h2 className="mb-6 text-xl font-semibold text-white">
-            Competitions
-            <span className="ml-2 text-sm font-normal text-gray-500">({competitions.length})</span>
-          </h2>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-white">
+              Competitions
+              <span className="ml-2 text-sm font-normal text-gray-500">({competitions.length})</span>
+            </h2>
+            {canAddCompetitions ? (
+              <Button
+                className="btn-gradient whitespace-nowrap px-4 py-2 text-sm"
+                onClick={() => {
+                  setAddCompetitionError('')
+                  setIsAddingCompetition(true)
+                }}
+              >
+                + Add a competition
+              </Button>
+            ) : null}
+          </div>
 
           {competitionsQuery.isLoading ? (
             <p className="text-gray-400">Loading competitions…</p>
@@ -377,7 +417,11 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                             className="px-4 py-2 text-sm"
                             disabled={isPending}
                             onClick={() =>
-                              competitionTransition.mutate({ id: competition.id, action: step.action })
+                              setPendingCompetitionAction({
+                                id: competition.id,
+                                name: competition.name,
+                                action: step.action,
+                              })
                             }
                           >
                             {isPending ? '…' : step.label}
@@ -391,10 +435,15 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
             </div>
           )}
 
-          {canAddCompetitions ? (
-            <Card>
-              <h3 className="mb-4 text-base font-semibold text-white">Add a competition</h3>
+          <Modal
+            isOpen={isAddingCompetition}
+            error={addCompetitionError}
+            title="Add a competition"
+            description="A contest within this tournament — one sport, one set of entries."
+            onClose={() => setIsAddingCompetition(false)}
+          >
               <form
+                id="add-competition-form"
                 className="grid gap-4 sm:grid-cols-2"
                 onSubmit={(event) => {
                   event.preventDefault()
@@ -442,20 +491,26 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
                 </div>
 
                 <div className="sm:col-span-2">
-                  <Button
-                    type="submit"
-                    className="btn-gradient"
-                    disabled={addCompetition.isPending || !competitionName || !sportCode}
-                  >
-                    {addCompetition.isPending ? 'Adding…' : 'Add competition'}
-                  </Button>
-                  <p className="mt-3 text-xs text-gray-500">
+                  <p className="text-xs text-gray-500">
                     The scoring and fixture rules for the sport are applied automatically.
                   </p>
                 </div>
               </form>
-            </Card>
-          ) : null}
+
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
+                <Button variant="secondary" className="px-5 py-2 text-sm" onClick={() => setIsAddingCompetition(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="add-competition-form"
+                  className="btn-gradient px-5 py-2 text-sm"
+                  disabled={addCompetition.isPending || !competitionName || !sportCode}
+                >
+                  {addCompetition.isPending ? 'Adding…' : 'Add competition'}
+                </Button>
+              </div>
+          </Modal>
 
           {/* Rulebooks, sanction letters and schedules hang off the tournament itself. */}
           <DocumentPanel
@@ -465,6 +520,28 @@ export default function TournamentDetailView({ tournamentId }: { tournamentId: s
           />
         </div>
       </main>
+
+      <ConfirmDialog
+        isOpen={pendingTournamentAction !== null}
+        copy={pendingTournamentAction ? TOURNAMENT_TRANSITIONS[pendingTournamentAction] : null}
+        isWorking={tournamentTransition.isPending}
+        onCancel={() => setPendingTournamentAction(null)}
+        onConfirm={() => pendingTournamentAction && tournamentTransition.mutate(pendingTournamentAction)}
+      />
+
+      <ConfirmDialog
+        isOpen={pendingCompetitionAction !== null}
+        copy={pendingCompetitionAction ? COMPETITION_TRANSITIONS[pendingCompetitionAction.action] : null}
+        isWorking={competitionTransition.isPending}
+        onCancel={() => setPendingCompetitionAction(null)}
+        onConfirm={() =>
+          pendingCompetitionAction &&
+          competitionTransition.mutate({
+            id: pendingCompetitionAction.id,
+            action: pendingCompetitionAction.action,
+          })
+        }
+      />
     </>
   )
 }

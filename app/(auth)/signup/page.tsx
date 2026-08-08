@@ -122,9 +122,10 @@ export default function SignUpPage() {
             className="mt-0.5 h-4 w-4 shrink-0 rounded border-dark-border bg-dark-surface accent-accent-blue"
           />
           <span>
-            I agree to the{' '}
-            <AuthLink href="#">Terms of Service</AuthLink> and{' '}
-            <AuthLink href="#">Privacy Policy</AuthLink>
+            {/* One link, because there is one document. Naming a separate privacy policy that does
+                not exist would be worse than not offering the link — how data is handled is
+                sections 3 and 4 of the terms. */}
+            I agree to the <AuthLink href="/terms">Terms of use</AuthLink>
           </span>
         </label>
 

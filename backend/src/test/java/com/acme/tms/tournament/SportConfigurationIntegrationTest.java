@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,13 +43,17 @@ class SportConfigurationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void seedsTheTwoMvpSports() {
+    void seedsACatalogCoveringBothStrategyShapes() {
         ApiClient.Session session = api.registerTenant("sports@example.com", "Sports Federation");
 
         JsonNode sports = api.get("/api/v1/sports", session.accessToken()).json();
+        List<String> codes = sports.findValuesAsText("code");
 
-        assertThat(sports).hasSize(2);
-        assertThat(sports.findValuesAsText("code")).containsExactlyInAnyOrder("FOOTBALL", "ATHLETICS_100M");
+        // Not an exact count: the catalog is seed data and grows. What matters is that the two
+        // shapes the deployed strategies serve are both represented, and that codes stay unique.
+        assertThat(codes).contains("FOOTBALL", "ATHLETICS_100M");
+        assertThat(codes).doesNotHaveDuplicates();
+        assertThat(codes.size()).isGreaterThanOrEqualTo(2);
     }
 
     @Test

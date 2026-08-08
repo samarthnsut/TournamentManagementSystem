@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 import StatusBadge from '../ui/StatusBadge'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import ResultEntry from './ResultEntry'
 import { ApiError } from '../../lib/api/client'
 import {
@@ -17,6 +18,7 @@ import {
   type ParticipantOutcome,
 } from '../../lib/api/fixtures'
 import type { Competition } from '../../lib/api/tournaments'
+import { ACTION_COPY, MATCH_TRANSITIONS } from '../../lib/lifecycle'
 
 /**
  * The score as it reads on a results sheet — "3 – 1".
@@ -53,6 +55,7 @@ function MatchRow({
   onRecord,
   onTransition,
   isSaving,
+  recordError,
 }: {
   match: Match
   competition: Competition
@@ -63,6 +66,7 @@ function MatchRow({
   onRecord: (matchId: string, payload: Parameters<typeof recordResult>[1]) => void
   onTransition: (matchId: string, action: 'start' | 'postpone' | 'cancel') => void
   isSaving: boolean
+  recordError?: string
 }) {
   const isOpen = openMatchId === match.id
   const isFinished = match.status === 'COMPLETED' || match.status === 'WALKOVER'
@@ -182,6 +186,7 @@ function MatchRow({
           match={match}
           evaluator={competition.resultEvaluator}
           isSaving={isSaving}
+          error={recordError}
           onCancel={() => setOpenMatchId(null)}
           onSubmit={(payload) => onRecord(match.id, payload)}
         />
@@ -205,7 +210,19 @@ export default function FixturesPanel({
 }) {
   const queryClient = useQueryClient()
   const [openMatchId, setOpenMatchId] = useState<string | null>(null)
+  const [pendingMatch, setPendingMatch] = useState<
+    { matchId: string; action: 'start' | 'postpone' | 'cancel' } | null
+  >(null)
+  const [isConfirmingRedraw, setIsConfirmingRedraw] = useState(false)
+  // Kept beside the open form rather than raised to the page, where it sits above the fold.
+  const [recordError, setRecordError] = useState('')
   const competitionId = competition.id
+
+  // Opening or dismissing a result form clears whatever the last attempt complained about.
+  const openResultForm = (matchId: string | null) => {
+    setRecordError('')
+    setOpenMatchId(matchId)
+  }
 
   const fixturesQuery = useQuery({
     queryKey: ['fixtures', competitionId],
@@ -227,8 +244,14 @@ export default function FixturesPanel({
 
   const redraw = useMutation({
     mutationFn: () => regenerateFixtures(competitionId),
-    onSuccess: refresh,
-    onError,
+    onSuccess: async () => {
+      setIsConfirmingRedraw(false)
+      await refresh()
+    },
+    onError: (cause) => {
+      setIsConfirmingRedraw(false)
+      onError(cause)
+    },
   })
 
   const record = useMutation({
@@ -241,20 +264,30 @@ export default function FixturesPanel({
     }) => recordResult(matchId, payload),
     onSuccess: async () => {
       setOpenMatchId(null)
+      setRecordError('')
       await refresh()
     },
-    onError,
+    onError: (cause) =>
+      setRecordError(cause instanceof Error ? cause.message : 'The result could not be saved'),
   })
 
   const transition = useMutation({
     mutationFn: ({ matchId, action }: { matchId: string; action: 'start' | 'postpone' | 'cancel' }) =>
       transitionMatch(matchId, action),
-    onSuccess: refresh,
-    onError,
+    onSuccess: async () => {
+      setPendingMatch(null)
+      await refresh()
+    },
+    onError: (cause) => {
+      setPendingMatch(null)
+      onError(cause)
+    },
   })
 
   const fixtures = fixturesQuery.data
   const hasDraw = Boolean(fixtures)
+  // The backend draws in CLOSED or IN_PROGRESS; anything else is too early or too late.
+  const drawableNow = competition.status === 'CLOSED' || competition.status === 'IN_PROGRESS'
   const notFound = fixturesQuery.error instanceof ApiError && fixturesQuery.error.status === 404
 
   const allMatches = fixtures?.fixtures.flatMap((round) => round.matches) ?? []
@@ -276,28 +309,22 @@ export default function FixturesPanel({
               ? `${fixtures?.matchCount} ${
                   fixtures?.matchCount === 1 ? 'match' : 'matches'
                 } across ${fixtures?.rounds} ${fixtures?.rounds === 1 ? 'round' : 'rounds'} · ${playedCount} played`
-              : competition.status === 'CLOSED'
-                ? 'Entries are closed. Generate the draw to begin.'
-                : 'The draw can be generated once entries are closed.'}
+              : drawableNow
+                ? 'Entries are settled. Generating the draw also starts the competition.'
+                : competition.status === 'DRAFT' || competition.status === 'OPEN'
+                  ? 'Close entries once the field is settled, then generate the draw.'
+                  : 'This competition is finished — its draw can no longer be made.'}
           </p>
         </div>
 
-        {canGenerate && competition.status === 'CLOSED' ? (
+        {canGenerate && drawableNow ? (
           hasDraw ? (
             canRedraw ? (
               <Button
                 variant="secondary"
                 className="px-4 py-2 text-sm"
                 disabled={redraw.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'This discards the current draw and pairs everyone again. Continue?',
-                    )
-                  ) {
-                    redraw.mutate()
-                  }
-                }}
+                onClick={() => setIsConfirmingRedraw(true)}
               >
                 {redraw.isPending ? 'Redrawing…' : 'Regenerate draw'}
               </Button>
@@ -322,9 +349,13 @@ export default function FixturesPanel({
         <p className="text-sm text-gray-400">Loading fixtures…</p>
       ) : notFound || !fixtures ? (
         <p className="text-sm text-gray-500">
-          {competition.status === 'CLOSED'
-            ? 'No draw yet.'
-            : `Close entries first — the competition is currently ${competition.status.toLowerCase()}.`}
+          {drawableNow
+            ? 'No draw yet — generate one to create the matches.'
+            : competition.status === 'OPEN'
+              ? 'Entries are still open. Close them once the field is settled, then generate the draw.'
+              : competition.status === 'DRAFT'
+                ? 'Open entries first, then close them, then generate the draw.'
+                : 'No draw was ever generated, and this competition is finished.'}
         </p>
       ) : (
         <div className="space-y-6">
@@ -342,10 +373,11 @@ export default function FixturesPanel({
                     canRecord={canRecord}
                     canSchedule={canSchedule}
                     openMatchId={openMatchId}
-                    setOpenMatchId={setOpenMatchId}
+                    setOpenMatchId={openResultForm}
                     isSaving={record.isPending}
+                    recordError={openMatchId === match.id ? recordError : undefined}
                     onRecord={(matchId, payload) => record.mutate({ matchId, payload })}
-                    onTransition={(matchId, action) => transition.mutate({ matchId, action })}
+                    onTransition={(matchId, action) => setPendingMatch({ matchId, action })}
                   />
                 ))}
               </div>
@@ -353,6 +385,22 @@ export default function FixturesPanel({
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingMatch !== null}
+        copy={pendingMatch ? MATCH_TRANSITIONS[pendingMatch.action] : null}
+        isWorking={transition.isPending}
+        onCancel={() => setPendingMatch(null)}
+        onConfirm={() => pendingMatch && transition.mutate(pendingMatch)}
+      />
+
+      <ConfirmDialog
+        isOpen={isConfirmingRedraw}
+        copy={ACTION_COPY.regenerateDraw}
+        isWorking={redraw.isPending}
+        onCancel={() => setIsConfirmingRedraw(false)}
+        onConfirm={() => redraw.mutate()}
+      />
     </Card>
   )
 }

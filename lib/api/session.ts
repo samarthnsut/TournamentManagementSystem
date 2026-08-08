@@ -31,18 +31,42 @@ function announceChange() {
   }
 }
 
-export function storeAuth(auth: AuthResponse) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth))
+/**
+ * "Remember me" decides *where* the session is kept, not how long the server honours it.
+ *
+ * - remembered → `localStorage`, survives closing the browser
+ * - not remembered → `sessionStorage`, gone when the tab closes
+ *
+ * That distinction is the one people actually mean on a shared or public machine. The refresh
+ * token's own 30-day lifetime is unchanged either way — this is about what the browser retains,
+ * and the server remains the authority on what is still valid.
+ */
+export function storeAuth(auth: AuthResponse, remember = true) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const serialized = JSON.stringify(auth)
+  if (remember) {
+    localStorage.setItem(AUTH_STORAGE_KEY, serialized)
+    // Never leave a copy in the other store, or signing out of one would look like it failed.
+    sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  } else {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, serialized)
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+  }
   announceChange()
 }
 
 export function getStoredAuth(): AuthResponse | null {
-  // Guard for server rendering, where localStorage does not exist.
+  // Guard for server rendering, where neither store exists.
   if (typeof window === 'undefined') {
     return null
   }
 
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+  // sessionStorage first: a "just this once" sign-in in this tab should win over anything an
+  // earlier remembered session left behind.
+  const raw = sessionStorage.getItem(AUTH_STORAGE_KEY) ?? localStorage.getItem(AUTH_STORAGE_KEY)
   if (!raw) {
     return null
   }
@@ -50,14 +74,16 @@ export function getStoredAuth(): AuthResponse | null {
   try {
     return JSON.parse(raw) as AuthResponse
   } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
+    clearStoredAuth()
     return null
   }
 }
 
+/** Clears both stores; which one held the session is not the caller's concern. */
 export function clearStoredAuth() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(AUTH_STORAGE_KEY)
+    sessionStorage.removeItem(AUTH_STORAGE_KEY)
     announceChange()
   }
 }

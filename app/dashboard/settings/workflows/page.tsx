@@ -7,6 +7,8 @@ import Button from '../../../../components/ui/Button'
 import Card from '../../../../components/ui/Card'
 import Input from '../../../../components/ui/Input'
 import Select from '../../../../components/ui/Select'
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog'
+import { ACTION_COPY } from '../../../../lib/lifecycle'
 import { useAuth } from '../../../../lib/useAuth'
 import { getOrganizationUnits } from '../../../../lib/api/organizations'
 import { SYSTEM_ROLES } from '../../../../lib/api/users'
@@ -28,6 +30,7 @@ export default function WorkflowsPage() {
   const { can } = useAuth()
   const [error, setError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [pendingDeactivate, setPendingDeactivate] = useState<{ id: string; name: string } | null>(null)
   const [workflowName, setWorkflowName] = useState('')
   const [organizationUnitId, setOrganizationUnitId] = useState('')
   const [steps, setSteps] = useState<DraftStep[]>([
@@ -70,9 +73,13 @@ export default function WorkflowsPage() {
     mutationFn: deactivateWorkflow,
     onSuccess: async () => {
       setError('')
+      setPendingDeactivate(null)
       await queryClient.invalidateQueries({ queryKey: ['approval-workflows'] })
     },
-    onError: report,
+    onError: (cause) => {
+      setPendingDeactivate(null)
+      report(cause)
+    },
   })
 
   const workflows = workflowsQuery.data ?? []
@@ -233,15 +240,9 @@ export default function WorkflowsPage() {
                   {canConfigure && workflow.isActive ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            'Deactivate this workflow? Entries already in flight keep their current levels.',
-                          )
-                        ) {
-                          deactivate.mutate(workflow.id)
-                        }
-                      }}
+                      onClick={() =>
+                        setPendingDeactivate({ id: workflow.id, name: workflow.workflowName })
+                      }
                       className="text-sm text-red-300 transition hover:text-red-200"
                     >
                       Deactivate
@@ -269,6 +270,17 @@ export default function WorkflowsPage() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        isOpen={pendingDeactivate !== null}
+        copy={
+          pendingDeactivate
+            ? { ...ACTION_COPY.deactivateWorkflow, title: `Deactivate "${pendingDeactivate.name}"?` }
+            : null
+        }
+        isWorking={deactivate.isPending}
+        onCancel={() => setPendingDeactivate(null)}
+        onConfirm={() => pendingDeactivate && deactivate.mutate(pendingDeactivate.id)}
+      />
     </SettingsShell>
   )
 }

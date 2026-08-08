@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Header from '../../../components/Header'
 import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
+import DateField from '../../../components/ui/DateField'
 import Card from '../../../components/ui/Card'
 import Select from '../../../components/ui/Select'
 import { createTournament } from '../../../lib/api/tournaments'
@@ -184,25 +185,29 @@ export default function CreateTournamentPage() {
                       <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-2">
                         Start Date
                       </label>
-                      <Input
+                      <DateField
                         id="startDate"
-                        name="startDate"
-                        type="date"
                         value={formData.startDate}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData({ ...formData, startDate: value })}
                       />
                     </div>
                     <div>
                       <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-2">
                         End Date
                       </label>
-                      <Input
+                      <DateField
                         id="endDate"
-                        name="endDate"
-                        type="date"
                         value={formData.endDate}
-                        onChange={handleChange}
+                        // An end date before the start is rejected by the database anyway; the
+                        // picker simply stops offering the invalid half of the calendar.
+                        min={formData.startDate || undefined}
+                        onChange={(value) => setFormData({ ...formData, endDate: value })}
                       />
+                      {formData.startDate && formData.endDate && formData.endDate < formData.startDate ? (
+                        <p className="mt-1 text-xs text-red-300">
+                          The end date is before the start date.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>

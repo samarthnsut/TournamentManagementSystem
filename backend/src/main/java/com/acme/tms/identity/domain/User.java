@@ -35,6 +35,12 @@ public class User extends SoftDeletableEntity {
 
     private Instant inviteExpiresAt;
 
+    /** Only the hash, as for invites: a readable reset token is a readable password. */
+    @Column(length = 64)
+    private String passwordResetTokenHash;
+
+    private Instant passwordResetExpiresAt;
+
     public String getEmail() {
         return email;
     }
@@ -90,5 +96,20 @@ public class User extends SoftDeletableEntity {
     public void setInviteExpiresAt(Instant inviteExpiresAt) {
         this.inviteExpiresAt = inviteExpiresAt;
     }
-}
 
+    public String getPasswordResetTokenHash() {
+        return passwordResetTokenHash;
+    }
+
+    public void setPasswordResetTokenHash(String passwordResetTokenHash) {
+        this.passwordResetTokenHash = passwordResetTokenHash;
+    }
+
+    public Instant getPasswordResetExpiresAt() {
+        return passwordResetExpiresAt;
+    }
+
+    public void setPasswordResetExpiresAt(Instant passwordResetExpiresAt) {
+        this.passwordResetExpiresAt = passwordResetExpiresAt;
+    }
+}

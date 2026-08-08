@@ -50,7 +50,10 @@ public class SecurityConfig {
                 // not yet published, so DRAFT slugs cannot be discovered here.
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/invite-accept", "/api/v1/auth/register").permitAll()
+                // Password recovery has to be anonymous by definition: a locked-out user has no
+                // token to present.
+                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/invite-accept",
+                    "/api/v1/auth/register", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions

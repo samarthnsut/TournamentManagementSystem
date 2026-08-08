@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import Card from '../ui/Card'
 import StatusBadge from '../ui/StatusBadge'
+import Podium from './Podium'
 import StandingsTable from './StandingsTable'
 import { ApiError } from '../../lib/api/client'
 import {
@@ -58,6 +59,7 @@ export default function PublicCompetitionResults({
             </span>
           ) : null}
         </div>
+        {board ? <Podium board={board} /> : null}
         <StandingsTable
           board={board}
           isLoading={boardQuery.isLoading}

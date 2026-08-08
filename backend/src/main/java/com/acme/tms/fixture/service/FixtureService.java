@@ -53,6 +53,10 @@ import java.util.UUID;
 @Service
 public class FixtureService {
 
+    /** Statuses a draw may be made in: entries settled, competition not yet finished. */
+    private static final java.util.EnumSet<CompetitionStatus> DRAWABLE =
+        java.util.EnumSet.of(CompetitionStatus.CLOSED, CompetitionStatus.IN_PROGRESS);
+
     private final FixtureRepository fixtureRepository;
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
@@ -96,12 +100,16 @@ public class FixtureService {
     public FixtureSetResponse generate(UUID competitionId, GenerateFixturesRequest request) {
         Competition competition = competitionService.require(competitionId);
 
-        // BR-F-2: entries have to be settled before anyone can be drawn against anyone.
-        if (competition.getStatus() != CompetitionStatus.CLOSED) {
+        // BR-F-2: entries have to be settled before anyone can be drawn against anyone. A
+        // competition already under way is allowed too — a draw made late is still a valid draw,
+        // and refusing it would strand any competition whose organizer pressed Start first.
+        if (!DRAWABLE.contains(competition.getStatus())) {
             throw new ConflictException(
                 "COMPETITION_NOT_CLOSED",
-                "Close registrations before generating fixtures; this competition is "
-                    + competition.getStatus() + "."
+                competition.getStatus() == CompetitionStatus.OPEN
+                    ? "Close entries before generating the draw — the field has to be settled first."
+                    : "A " + competition.getStatus().name().toLowerCase().replace('_', ' ')
+                        + " competition can no longer be drawn."
             );
         }
 
@@ -112,7 +120,16 @@ public class FixtureService {
             );
         }
 
-        return draw(competition, request);
+        FixtureSetResponse drawn = draw(competition, request);
+
+        // BR-F-2 again: making the draw is what starts a competition. Leaving that to a separate
+        // button is what let organizers close entries, complete the competition, and only then
+        // discover the draw could no longer be made.
+        if (competition.getStatus() == CompetitionStatus.CLOSED) {
+            competition.setStatus(CompetitionStatus.IN_PROGRESS);
+        }
+
+        return drawn;
     }
 
     @Transactional

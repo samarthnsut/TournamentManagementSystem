@@ -38,6 +38,16 @@ services:
     volumes:
       - tms_minio_data:/data
 
+  # Catches every outgoing mail locally instead of sending it. Web UI on :8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: tms-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+
 volumes:
   tms_postgres_data:
   tms_redis_data:

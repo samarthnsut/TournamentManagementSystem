@@ -7,6 +7,8 @@ import Button from '../../../../components/ui/Button'
 import Card from '../../../../components/ui/Card'
 import Input from '../../../../components/ui/Input'
 import Select from '../../../../components/ui/Select'
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog'
+import { ACTION_COPY } from '../../../../lib/lifecycle'
 import { useAuth } from '../../../../lib/useAuth'
 import { getOrganizationUnits } from '../../../../lib/api/organizations'
 import {
@@ -33,6 +35,7 @@ export default function VenuesPage() {
   const [error, setError] = useState('')
   const [draft, setDraft] = useState<VenuePayload | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [pendingArchive, setPendingArchive] = useState<Venue | null>(null)
 
   const report = (cause: unknown) =>
     setError(cause instanceof Error ? cause.message : 'Something went wrong')
@@ -60,7 +63,17 @@ export default function VenuesPage() {
     onError: report,
   })
 
-  const archive = useMutation({ mutationFn: archiveVenue, onSuccess: done, onError: report })
+  const archive = useMutation({
+    mutationFn: archiveVenue,
+    onSuccess: async () => {
+      setPendingArchive(null)
+      await done()
+    },
+    onError: (cause) => {
+      setPendingArchive(null)
+      report(cause)
+    },
+  })
 
   const canCreate = can('venue:create')
   const canEdit = can('venue:update')
@@ -219,11 +232,7 @@ export default function VenuesPage() {
                   {canArchive ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm(`Archive ${venue.name}? It stops appearing when scheduling.`)) {
-                          archive.mutate(venue.id)
-                        }
-                      }}
+                      onClick={() => setPendingArchive(venue)}
                       className="text-red-300 transition hover:text-red-200"
                     >
                       Archive
@@ -235,6 +244,17 @@ export default function VenuesPage() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        isOpen={pendingArchive !== null}
+        copy={
+          pendingArchive
+            ? { ...ACTION_COPY.archiveVenue, title: `Archive ${pendingArchive.name}?` }
+            : null
+        }
+        isWorking={archive.isPending}
+        onCancel={() => setPendingArchive(null)}
+        onConfirm={() => pendingArchive && archive.mutate(pendingArchive.id)}
+      />
     </SettingsShell>
   )
 }

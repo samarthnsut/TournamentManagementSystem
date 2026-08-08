@@ -2,6 +2,8 @@ package com.acme.tms.identity.api;
 
 import com.acme.tms.common.security.AuthenticatedUser;
 import com.acme.tms.identity.dto.AcceptInviteRequest;
+import com.acme.tms.identity.dto.ForgotPasswordRequest;
+import com.acme.tms.identity.dto.ResetPasswordRequest;
 import com.acme.tms.identity.dto.BootstrapRegisterRequest;
 import com.acme.tms.identity.dto.LoginRequest;
 import com.acme.tms.identity.dto.LogoutRequest;
@@ -9,6 +11,7 @@ import com.acme.tms.identity.dto.RefreshRequest;
 import com.acme.tms.identity.dto.TokenResponse;
 import com.acme.tms.identity.repository.UserRoleAssignmentRepository;
 import com.acme.tms.identity.service.AuthService;
+import com.acme.tms.identity.service.PasswordResetService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -28,14 +31,36 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
 
     public AuthController(
         AuthService authService,
+        PasswordResetService passwordResetService,
         UserRoleAssignmentRepository userRoleAssignmentRepository
     ) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
+    }
+
+    /**
+     * Always 204, whether or not the address has an account.
+     *
+     * <p>A different answer for a registered address would turn this into a way to discover who
+     * holds an account — so the response, the status and the timing shape are the same either way.
+     */
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.forgotPassword(request);
+    }
+
+    /** 204: every session just ended, so there is nothing to hand back. */
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
     }
 
     @PostMapping("/register")

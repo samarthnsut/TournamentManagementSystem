@@ -39,12 +39,15 @@ export default function ResultEntry({
   match,
   evaluator,
   isSaving,
+  error,
   onCancel,
   onSubmit,
 }: {
   match: Match
   evaluator: ResultEvaluatorKey | null
   isSaving: boolean
+  /** Shown against the form itself; a banner at the top of the page is off-screen from here. */
+  error?: string
   onCancel: () => void
   onSubmit: (payload: {
     outcome: 'COMPLETED' | 'WALKOVER'
@@ -90,6 +93,21 @@ export default function ResultEntry({
 
   return (
     <form onSubmit={submit} className="mt-3 space-y-4 border-t border-dark-border pt-4">
+      {error ? (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+        >
+          <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              fillRule="evenodd"
+              d="M8.49 3.17a1.75 1.75 0 0 1 3.02 0l6.28 10.8A1.75 1.75 0 0 1 16.28 16.6H3.72a1.75 1.75 0 0 1-1.51-2.63l6.28-10.8ZM10 7a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 10 7Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>{error}</span>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-gray-300">
           <input

@@ -7,11 +7,14 @@ import Header from '../../components/Header'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { TOURNAMENT_TRANSITIONS } from '../../lib/lifecycle'
 import { useAuth } from '../../lib/useAuth'
 import {
   getTournaments,
   nextAction,
   transitionTournament,
+  type Tournament,
   type TournamentAction,
   type TournamentStatus,
 } from '../../lib/api/tournaments'
@@ -84,6 +87,11 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [actionError, setActionError] = useState<string>('')
+  // Held until the organizer confirms, so the dialog can explain what the move does.
+  const [pendingTransition, setPendingTransition] = useState<{
+    tournament: Tournament
+    action: TournamentAction
+  } | null>(null)
   const queryClient = useQueryClient()
   const { can } = useAuth()
 
@@ -96,10 +104,14 @@ export default function DashboardPage() {
     mutationFn: ({ id, action }: { id: string; action: TournamentAction }) => transitionTournament(id, action),
     onSuccess: async () => {
       setActionError('')
+      setPendingTransition(null)
       await queryClient.invalidateQueries({ queryKey: ['tournaments'] })
     },
     // Lifecycle rules are enforced server-side, so surface exactly what it said.
-    onError: (mutationError) => setActionError(mutationError instanceof Error ? mutationError.message : 'Action failed'),
+    onError: (mutationError) => {
+      setPendingTransition(null)
+      setActionError(mutationError instanceof Error ? mutationError.message : 'Action failed')
+    },
   })
 
   const filteredTournaments = useMemo(() => {
@@ -217,14 +229,20 @@ export default function DashboardPage() {
                     key={tournament.id}
                     className={`group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-accent-purple/20 border-l-4 ${style.border}`}
                   >
-                    <div className="flex flex-col gap-4">
+                    {/* The whole card is the link. A stretched overlay does that without nesting
+                        the action buttons inside an anchor, which would be invalid markup and
+                        would swallow their clicks. */}
+                    <Link
+                      href={`/dashboard/tournament?id=${tournament.id}`}
+                      aria-label={`Manage ${tournament.name}`}
+                      className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple"
+                    />
+                    <div className="pointer-events-none relative z-10 flex flex-col gap-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <Link href={`/dashboard/tournament?id=${tournament.id}`}>
-                            <h3 className="text-lg font-bold text-white transition hover:text-accent-purple">
-                              {tournament.name}
-                            </h3>
-                          </Link>
+                          <h3 className="text-lg font-bold text-white transition group-hover:text-accent-purple">
+                            {tournament.name}
+                          </h3>
                           <p className="mt-1 text-sm text-gray-400">/t/{tournament.slug}</p>
                         </div>
                         <span
@@ -243,15 +261,10 @@ export default function DashboardPage() {
                         ) : null}
                       </div>
 
-                      <div className="flex gap-2 pt-2">
-                        <Link href={`/dashboard/tournament?id=${tournament.id}`} className="flex-1">
-                          <button className="w-full rounded-lg border border-dark-border bg-dark-surface px-3 py-2 text-sm font-medium text-gray-300 transition hover:border-accent-purple hover:text-accent-purple">
-                            Manage
-                          </button>
-                        </Link>
+                      <div className="pointer-events-auto flex gap-2 pt-2">
                         {advance ? (
                           <button
-                            onClick={() => transition.mutate({ id: tournament.id, action: advance.action })}
+                            onClick={() => setPendingTransition({ tournament, action: advance.action })}
                             disabled={isPending}
                             className="flex-1 rounded-lg border border-accent-orange/30 bg-accent-orange/5 px-3 py-2 text-sm font-medium text-accent-orange hover:bg-accent-orange/10 transition disabled:opacity-50"
                           >
@@ -291,6 +304,20 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      <ConfirmDialog
+        isOpen={pendingTransition !== null}
+        copy={pendingTransition ? TOURNAMENT_TRANSITIONS[pendingTransition.action] : null}
+        isWorking={transition.isPending}
+        onCancel={() => setPendingTransition(null)}
+        onConfirm={() =>
+          pendingTransition &&
+          transition.mutate({
+            id: pendingTransition.tournament.id,
+            action: pendingTransition.action,
+          })
+        }
+      />
     </>
   )
 }

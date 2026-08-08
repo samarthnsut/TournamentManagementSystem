@@ -24,12 +24,23 @@ import {
 /** Roles that live at ORGANIZATION scope; the others need a tournament or competition id. */
 const ORGANIZATION_ROLES = SYSTEM_ROLES.filter((role) => role.scope === 'ORGANIZATION')
 
+/**
+ * The same link the invite email contains, built from wherever this page is being served. Built
+ * client-side rather than returned by the API so it always matches the host the organizer is on —
+ * a link to localhost is no use to someone reading it in production.
+ */
+function inviteLink(token: string) {
+  const origin = typeof window === 'undefined' ? '' : window.location.origin
+  return `${origin}/TournamentManagementSystem/accept-invite?token=${encodeURIComponent(token)}`
+}
+
 export default function UsersPage() {
   const queryClient = useQueryClient()
   const { can } = useAuth()
   const [error, setError] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [invited, setInvited] = useState<InvitedUser | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -118,18 +129,37 @@ export default function UsersPage() {
       }
     >
       {invited ? (
-        <Card className="mb-6 border-l-4 border-l-amber-500">
-          <h2 className="mb-1 text-lg font-semibold text-white">Invite created for {invited.email}</h2>
+        <Card className="mb-6 border-l-4 border-l-green-500">
+          <h2 className="mb-1 text-lg font-semibold text-white">Invite sent to {invited.email}</h2>
           <p className="mb-4 text-sm text-gray-400">
-            Email delivery is not wired up yet, so this link is shown once. Send it to them yourself —
-            it will not be displayed again.
+            They have been emailed a link to set a password. It is valid for seven days. If the email
+            does not arrive, send them this link yourself — it is shown only now.
           </p>
           <code className="block overflow-x-auto rounded-lg border border-dark-border bg-dark-bg px-4 py-3 text-xs text-accent-cyan">
-            {invited.inviteToken}
+            {inviteLink(invited.inviteToken)}
           </code>
-          <Button variant="secondary" className="mt-4 px-4 py-2 text-sm" onClick={() => setInvited(null)}>
-            Done
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              className="px-4 py-2 text-sm"
+              onClick={() => {
+                void navigator.clipboard?.writeText(inviteLink(invited.inviteToken))
+                setCopied(true)
+              }}
+            >
+              {copied ? 'Copied' : 'Copy link'}
+            </Button>
+            <Button
+              variant="secondary"
+              className="px-4 py-2 text-sm"
+              onClick={() => {
+                setInvited(null)
+                setCopied(false)
+              }}
+            >
+              Done
+            </Button>
+          </div>
         </Card>
       ) : null}
 
