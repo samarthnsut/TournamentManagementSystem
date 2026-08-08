@@ -34,6 +34,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // app.jwt.secret has no default outside the dev profile, so the context needs one supplied.
+        registry.add("app.jwt.secret", () -> "integration-test-signing-secret-not-used-anywhere-else");
     }
 
     @Autowired

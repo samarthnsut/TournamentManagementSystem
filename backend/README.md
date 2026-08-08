@@ -74,20 +74,18 @@ cd backend
 docker compose up -d
 ```
 
-Start the backend:
-
-```bash
-cd backend
-./gradlew bootRun
-```
-
-Run with the `dev` profile to load a demo tenant tree (SAI → Haryana/Punjab → district units) with
-one user per role, all using the password `StrongPass123`:
+Start the backend. The `dev` profile supplies the local database credentials and a development
+signing secret, and loads a demo tenant tree (SAI → Haryana/Punjab → district units) with one user
+per role, all using the password `StrongPass123`:
 
 ```bash
 cd backend
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
+
+Without that profile the app requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and `JWT_SECRET` and
+refuses to start until they are set — deliberately, so that a deployment missing one fails by
+naming it, rather than falling back to localhost or to a secret committed to this repo.
 
 The seeded accounts and the tree they belong to are listed in
 [`TEST_ACCOUNTS.md`](../TEST_ACCOUNTS.md).

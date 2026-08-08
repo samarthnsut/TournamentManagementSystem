@@ -1,0 +1,14 @@
+# Local development defaults, matching docker-compose.yml.
+#
+# These live here rather than in application.yml so that no deployed environment can ever inherit
+# them: production config carries no fallbacks, so a missing variable stops the app at startup and
+# names itself instead of quietly dialling localhost or signing tokens with a public secret.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/tms}
+    username: ${DB_USERNAME:tms}
+    password: ${DB_PASSWORD:tms}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:local-development-only-secret-never-used-by-a-deployed-environment}

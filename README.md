@@ -16,8 +16,12 @@ To run the backend locally:
 ```bash
 cd backend
 docker compose up -d
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
+
+The `dev` profile supplies the local database credentials and a development signing secret. Outside
+it the app requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and `JWT_SECRET`, and will not start
+until they are set.
 
 Gradle itself does not need to be installed, but it must run on a JDK between 17 and 24 — Java 25
 is not yet supported. Docker is required for the database and the integration tests. See

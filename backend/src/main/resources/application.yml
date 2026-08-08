@@ -5,9 +5,13 @@ spring:
   application:
     name: tournament-management-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/tms}
-    username: ${DB_USERNAME:tms}
-    password: ${DB_PASSWORD:tms}
+    # No fallback on purpose. A default of localhost turns a missing DB_URL into "connection to
+    # localhost:5432 refused" from inside a container that never had a local Postgres — which reads
+    # as a database fault rather than the missing variable it is. Unset, this fails at startup
+    # naming DB_URL. Local defaults live in application-dev.yml.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       # Serverless Postgres (Neon and friends) suspends its compute after a few idle minutes and
       # drops the connections with it. Hikari would keep handing those dead sockets out, so cap the
@@ -77,6 +81,8 @@ app:
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:3000,http://localhost:3001}
   jwt:
-    secret: ${JWT_SECRET:change-this-local-development-secret-before-production}
+    # Also unset by default: a fallback here is worse than a crash, because the app comes up happily
+    # signing tokens with a secret committed to a public repo, and nothing looks wrong.
+    secret: ${JWT_SECRET}
     access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:900}
     refresh-token-ttl-days: ${JWT_REFRESH_TOKEN_TTL_DAYS:30}
