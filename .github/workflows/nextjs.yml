@@ -73,6 +73,15 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
+      # An unset variable expands to an empty string rather than failing, and an empty API base
+      # deploys a site whose every call resolves against the Pages origin — where the login POST
+      # comes back 405 from the static host and the backend is never contacted. Stop here instead.
+      - name: Verify the API base URL is configured
+        run: |
+          if [ -z "${{ vars.NEXT_PUBLIC_API_BASE_URL }}" ]; then
+            echo "::error::NEXT_PUBLIC_API_BASE_URL is not set. Add it under Settings > Secrets and variables > Actions > Variables, as the backend origin plus /api/v1 (e.g. https://your-service.onrender.com/api/v1)."
+            exit 1
+          fi
       - name: Build with Next.js
         env:
           # A static export bakes NEXT_PUBLIC_* in at build time — there is no server to read it at

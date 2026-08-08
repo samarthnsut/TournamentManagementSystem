@@ -1,6 +1,9 @@
 import { clearStoredAuth, getStoredAuth } from './session'
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1'
+// `||`, not `??`: an undefined GitHub Actions variable expands to an empty string, and `??` would
+// keep it. An empty base turns every call into a same-origin relative path, so the static host
+// answers the login POST with 405 and the backend is never reached.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1'
 
 /** One field-level complaint from bean validation, as GlobalExceptionHandler emits them. */
 export type FieldError = { field: string; message: string }
