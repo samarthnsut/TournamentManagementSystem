@@ -1,0 +1,8 @@
+# The Dockerfile copies build inputs by name, so this mainly keeps the build context small — but
+# gradle.properties is listed because it is genuinely dangerous to leak in: it pins a macOS JDK path.
+gradle.properties
+build
+.gradle
+.idea
+.env
+.env.*

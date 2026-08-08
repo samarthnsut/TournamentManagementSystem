@@ -74,6 +74,13 @@ jobs:
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
       - name: Build with Next.js
+        env:
+          # A static export bakes NEXT_PUBLIC_* in at build time — there is no server to read it at
+          # runtime. Left unset, the deployed site calls http://localhost:8080 and every request
+          # fails. Set this as a repository *variable* (Settings > Secrets and variables > Actions >
+          # Variables): it ships to the browser regardless, and masking it as a secret would only
+          # make the build log harder to debug.
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
